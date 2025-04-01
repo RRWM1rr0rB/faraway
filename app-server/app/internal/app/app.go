@@ -34,10 +34,9 @@ func NewApp(ctx context.Context) (*App, error) {
 	)
 	ctx = logging.ContextWithLogger(ctx, logger)
 
-	// Init policy.
-	basePolicy := policy.NewBasePolicy(
-		defClock,
-	)
+	// 3. Initialize Policy.
+	powSolver := policy.NewPoWSolver(cfg.TCPClient.SolutionTimeout)
+	logging.L(ctx).Info("PoW Solver initialized", logging.DurationAttr("max_solution_time", cfg.TCPClient.SolutionTimeout))
 
 	return &App{
 		cfg:          cfg,

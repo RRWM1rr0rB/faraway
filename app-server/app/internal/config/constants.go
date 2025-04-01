@@ -1,8 +1,6 @@
 package config
 
 const (
-	ReadDataBuffer = 1024
-	TCP            = "tcp"
+	defaultConfigPath = "/Users/wm1rr0rb/workspace/faraway/configs/config.server.local.yaml"
+	envConfigPath     = "CONFIG_PATH"
 )
-
-const Symbols = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

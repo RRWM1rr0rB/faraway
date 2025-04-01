@@ -1,14 +1,12 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"time"
 
+	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/errors"
 	"github.com/spf13/viper"
-
-	ferrors "github.com/RRWM1rr0rB/faraway_lib/backend/golang/errors"
 )
 
 type (
@@ -60,7 +58,7 @@ func Load() (*AppConfig, error) {
 		// It's okay if the config file doesn't exist if using defaults or env vars
 		var configFileNotFoundError viper.ConfigFileNotFoundError
 		if !errors.As(err, &configFileNotFoundError) {
-			return nil, ferrors.Wrap(err, "failed to read config file")
+			return nil, errors.Wrap(err, "failed to read config file")
 		}
 		fmt.Printf("Config file %s not found, using defaults and environment variables.\n", configPath)
 	} else {
@@ -72,7 +70,7 @@ func Load() (*AppConfig, error) {
 
 	// Unmarshal the config
 	if err := vip.Unmarshal(&cfg); err != nil {
-		return nil, ferrors.Wrap(err, "failed to unmarshal config")
+		return nil, errors.Wrap(err, "failed to unmarshal config")
 	}
 
 	// Optional: Add validation logic here
