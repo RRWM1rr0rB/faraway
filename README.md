@@ -53,74 +53,61 @@ When selecting a PoW algorithm, the main consideration is the type of attackers 
 ```
 ├── app-client
 │   ├── app
-│   │   ├── cmd
+│   │   ├── cmd -- cmd file for running app.
 │   │   │   └── client
 │   │   │       └── main.go
 │   │   └── internal
-│   │       ├── app
-│   │       │   ├── app.go
-│   │       │   └── setup.go
+│   │       ├── app -- all setup extentions and runner.
+│   │       │   ├── app.go -- runner.
+│   │       │   └── setup.go -- setup extentions.
 │   │       ├── config
-│   │       │   ├── config.go
-│   │       │   └── constants.go
-│   │       ├── controller
+│   │       │   ├── config.go -- viper cfg setup(next we can use cobra for cli).
+│   │       │   └── constants.go -- global constants for project.
+│   │       ├── controller -- logic for communication with server.
 │   │       │   └── tcp
 │   │       │       └── v1
 │   │       │           └── mitigator
-│   │       │               ├── controller.go
-│   │       │               └── server.go
+│   │       │               ├── controller.go -- Logigic for communication with server.
+│   │       │               └── server.go -- Constructor and interface.
 │   │       └── policy
 │   │           └── mitigator
-│   │               ├── dto.go
-│   │               ├── policy.go
-│   │               └── policy_migrator.go
+│   │               ├── dto.go -- Model with struct.
+│   │               ├── policy.go -- Constructor and initializer.
+│   │               └── policy_migrator.go -- Buisness logic for policy.
 │   ├── go.mod
 │   └── go.sum
 ├── app-server
 │   ├── app
-│   │   ├── cmd
+│   │   ├── cmd -- cmd file for running app.
 │   │   │   └── server
 │   │   │       └── main.go
 │   │   ├── internal
-│   │   │   ├── app
-│   │   │   │   ├── app.go
-│   │   │   │   └── setup.go
+│   │   │   ├── app -- all setup extentions and runner.
+│   │   │   │   ├── app.go -- runner.
+│   │   │   │   └── setup.go -- setup extentions.
 │   │   │   ├── config
-│   │   │   │   ├── config.go
-│   │   │   │   └── constants.go
+│   │   │   │   ├── config.go - viper cfg setup(next we can use cobra for cli).
+│   │   │   │   └── constants.go -- global constants for project.
 │   │   │   ├── controller
 │   │   │   │   └── tcp
-│   │   │   │       └── mitigator
-│   │   │   ├── domain
-│   │   │   │   └── mitigator
-│   │   │   │       ├── model
-│   │   │   │       │   └── model.go
-│   │   │   │       ├── service
-│   │   │   │       │   └── service.go
-│   │   │   │       └── storage
-│   │   │   │           └── redis
-│   │   │   │               └── storage.go
+│   │   │   │       └── mitigator - logic for communication with client.
+│   │   │   │           ├── controller.go -- Logigic for communication with client.
+│   │   │   │           └── server.go -- Constructor and interface.
 │   │   │   └── policy
-│   │   │       ├── base.go
 │   │   │       └── mitigator
-│   │   │           ├── dto.go
-│   │   │           ├── error.go
-│   │   │           ├── policy.go
-│   │   │           └── policy_mitigator.go
-│   │   └── pkg
-│   │       └── pow
-│   │           └── algo.go
+│   │   │           ├── dto.go -- Model with struct.
+│   │   │           ├── error.go -- Custom errors.
+│   │   │           ├── policy.go -- Constructor and initializer.
+│   │   │           └── policy_mitigator.go -- Buisness logic for policy.
 │   ├── go.mod
 │   └── go.sum
 ├── configs
-│   ├── config.client.local.yaml
-│   ├── config.server.local.yaml
-│   └── docker-compose
-│       ├── docker-compose.client.local.yaml
-│       └── docker-compose.server.local.yaml
+│   ├── config.client.local.yaml -- config for client.
+│   ├── config.server.local.yaml -- config for server.
+|
 ├── deploy
-│   ├── Dockerfile.client.dockerfile
-│   └── Dockerfile.server.dockerfile
+│   ├── Dockerfile.client.dockerfile -- Dockerfile for client.
+│   └── Dockerfile.server.dockerfile -- Dockerfile for server.
 ```
 
 ---
@@ -130,36 +117,36 @@ When selecting a PoW algorithm, the main consideration is the type of attackers 
 ```
         ├── core
         │   ├── array
-        │   │   └── array.go
+        │   │   └── array.go -- don't use
         │   ├── blacklist
-        │   │   └── blacklist.go
+        │   │   └── blacklist.go -- logic for blacklist.
         │   ├── bytes
-        │   │   └── bytes.go
+        │   │   └── bytes.go -- logic for bytes.
         │   ├── clock
-        │   │   ├── clock.go
-        │   │   └── interface.go
+        │   │   ├── clock.go -- logic for clock.
+        │   │   └── interface.go -- interface for clock.
         │   ├── closer
-        │   │   └── closer.go
+        │   │   └── closer.go -- logic for closer.
         │   ├── encryption
-        │   │   └── sha-256
+        │   │   └── sha-256 -- logic for encryption.
         │   │       └── sha_256.go
         │   ├── go.mod
         │   ├── go.sum
-        │   ├── pointer
+        │   ├── pointer -- logic for pointer.
         │   │   └── pointer.go
         │   ├── random
-        │   │   └── random.go
+        │   │   └── random.go -- logic for random.
         │   ├── repeat
-        │   │   ├── repeat.go
-        │   │   ├── repeat_http.go
-        │   │   └── repeat_ws.go
+        │   │   ├── repeat.go -- logic for repeat.
+        │   │   ├── repeat_http.go -- logic for repeat.
+        │   │   └── repeat_ws.go -- logic for repeat.
         │   ├── safe
         │   │   ├── errorgroup
-        │   │   │   └── errorgroup.go
-        │   │   ├── safe.go
+        │   │   │   └── errorgroup.go -- logic for errorgroup.
+        │   │   ├── safe.go -- logic for safe.
         │   │   └── waitgroup
-        │   │       └── waitgroup.go
-        │   ├── tcp
+        │   │       └── waitgroup.go -- logic for waitgroup.
+        │   ├── tcp ------------------- WORK WITH TCP(BLACK LIST, COUNT CONNECTION AND OTHER(CLIENT AND SERVER))
         │   │   ├── client.go
         │   │   ├── error.go
         │   │   ├── middleware.go
@@ -169,26 +156,26 @@ When selecting a PoW algorithm, the main consideration is the type of attackers 
         │   │   ├── retry.go
         │   │   ├── server.go
         │   │   └── tls.go
-        │   ├── time
+        │   ├── time -- logic for time.
         │   │   └── time.go
-        │   ├── uuid
-        │   │   ├── db
+        │   ├── uuid -- logic for uuid.
+        │   │   ├── db -- logic for db.
         │   │   │   └── uuid.go
-        │   │   ├── google_uuid
+        │   │   ├── google_uuid -- logic for google_uuid.
         │   │   │   ├── interface.go
         │   │   │   ├── ulid.go
         │   │   │   └── uuid.go
-        │   │   ├── network
+        │   │   ├── network -- logic for network.
         │   │   │   └── uuid.go
         │   │   ├── uuid.go
         │   │   └── uuid_test.go
         │   └── version
-        ├── errors
+        ├── errors -- Custom errors.
         │   ├── errors.go
         │   ├── go.mod
         │   ├── go.sum
         │   └── version
-        ├── logging
+        ├── logging -- Logging on slog with Ctx and other functional.
         │   ├── alias.go
         │   ├── context.go
         │   ├── go.mod
@@ -198,7 +185,7 @@ When selecting a PoW algorithm, the main consideration is the type of attackers 
         │   ├── middleware.go
         │   └── version
         ├── main.go
-        ├── metrics
+        ├── metrics -- Metrics on prometheus with Ctx and other functional.
         │   ├── config.go
         │   ├── go.mod
         │   ├── go.sum
@@ -209,13 +196,13 @@ When selecting a PoW algorithm, the main consideration is the type of attackers 
         │   ├── metrics_grpc_availability.go
         │   ├── metrics_test.go
         │   └── version
-        ├── pprof
+        ├── pprof -- Profiling on pprof with Ctx and other functional.
         │   ├── config.go
         │   ├── go.mod
         │   ├── server.go
         │   ├── server_test.go
         │   └── version
-        ├── redis
+        ├── redis -- Redis on redis with Ctx and other functional.
         │   ├── aliases.go
         │   ├── error.go
         │   ├── go.mod
@@ -223,7 +210,7 @@ When selecting a PoW algorithm, the main consideration is the type of attackers 
         │   ├── metrics.go
         │   ├── redis.go
         │   └── version
-        └── tracing
+        └── tracing -- Tracing on jaeger with Ctx and other functional.
             ├── attrs.go
             ├── go.mod
             ├── go.sum
