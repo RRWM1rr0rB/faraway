@@ -25,8 +25,8 @@ func main() {
 	}
 
 	go func() {
-		if err := newApp.Run(ctx); err != nil {
-			logging.L(ctx).Error("app run failed", logging.ErrAttr(err))
+		if runErr := newApp.Run(ctx); runErr != nil {
+			logging.L(ctx).Error("app run failed", logging.ErrAttr(runErr))
 		}
 	}()
 

@@ -43,7 +43,6 @@ func (a *App) initRedisClient(ctx context.Context, cfg config.RedisConfig) (*red
 	logging.WithAttrs(
 		ctx,
 		logging.StringAttr("address", cfg.Address),
-		logging.StringAttr("password", "<REMOVED>"),
 		logging.IntAttr("db", cfg.DB),
 		logging.BoolAttr("tls", cfg.TLS),
 		logging.IntAttr("max-attempts", cfg.MaxAttempts),

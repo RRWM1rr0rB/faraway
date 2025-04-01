@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/core/uuid/google_uuid"
 	"net/http"
 
 	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/core/clock"
@@ -12,13 +11,12 @@ import (
 	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/logging"
 
 	"app-server/app/internal/config"
-	serviceSpot "server/app/internal/domain/spot/service"
-	"server/app/internal/policy"
-	policySpot "server/app/internal/policy/spot"
+	"app-server/app/internal/policy"
+	policyMitigator "app-server/app/internal/policy/mitigator"
 )
 
 const (
-	cfgPath = "/Users/wm1rr0rb/Downloads/NewWork/trade/configs/config.yaml"
+	cfgPath = "/Users/wm1rr0rb/workspace/faraway/configs/config.server.local.yaml"
 )
 
 type Runner interface {
@@ -28,12 +26,9 @@ type Runner interface {
 type App struct {
 	cfg *config.Config
 
-	httpRouter         *chi.Mux
-	httpServer         *http.Server
-	metricsHTTTPServer *metrics.Server
+	httpServer *http.Server
 
-	policySpot       *policySpot.Policy
-	adapterSpotKline *wsKline.SpotWebSocket
+	policySpot *policyMitigator.Policy
 
 	runners []Runner
 	recover errorgroup.RecoverFunc
@@ -75,8 +70,8 @@ func NewApp(ctx context.Context) (*App, error) {
 
 	// Init storage and service.
 	//----------------------------------------- Storage and Service ----------------------------------------------------
-	storageSpot := storageSpot.NewStorage(postgresClient)
-	serviceSpot := serviceSpot.NewService(storageSpot)
+	//storageSpot := storageSpot.NewStorage(postgresClient)
+	//serviceSpot := serviceSpot.NewService(storageSpot)
 
 	//----------------------------------------- End Storage and Service ------------------------------------------------
 
@@ -86,18 +81,9 @@ func NewApp(ctx context.Context) (*App, error) {
 	)
 
 	//----------------------------------------- Binance Policy ---------------------------------------------------------
-	app.policySpot = policySpot.NewPolicy(
+	app.policySpot = policyMitigator.NewPolicy(
 		basePolicy,
-		serviceSpot,
-		cfg,
-	)
-
-	app.adapterSpotKline = wsKline.NewSpotWebSocket(
-		app.policySpot,
-		cfg.Binance.Symbol,
-		cfg.Binance.Interval,
-		cfg.WebSocket.ReconnectTimes,
-		cfg.WebSocket.ReconnectDelay,
+		nil,
 	)
 
 	return &app, nil
@@ -111,11 +97,6 @@ func (a *App) Run(ctx context.Context) error {
 	g.Go(func(ctx context.Context) error {
 		<-ctx.Done()
 		return a.httpServer.Shutdown(context.Background())
-	})
-
-	// Start HTTP server
-	g.Go(func(ctx context.Context) error {
-		return a.httpServer.ListenAndServe()
 	})
 
 	// Start profiler if enabled

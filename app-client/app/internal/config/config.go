@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/logging"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
 )
@@ -23,18 +24,9 @@ type AppConfig struct {
 }
 
 type TCPClientConfig struct {
-}
-
-type TCPServerConfig struct {
-}
-
-type RedisConfig struct {
-	Address     string        `yaml:"address" env:"REDIS_ADDRESS"`
-	Password    string        `yaml:"password" env:"REDIS_PASSWORD"`
-	DB          int           `yaml:"db" env:"REDIS_DB"`
-	TLS         bool          `yaml:"is_tls" env:"REDIS_ISTLS"`
-	MaxAttempts int           `yaml:"max_attempts" env:"REDIS_MAX_ATTEMTPS"`
-	MaxDelay    time.Duration `yaml:"max_delay" env:"REDIS_MAX_DELAY"`
+	URL             string        `yaml:"URL" env:"TCP_CLIENT_URL"`
+	ReadTimeout     time.Duration `env:"READ_TIMEOUT" envDefault:"2s"`
+	SolutionTimeout time.Duration `env:"SOLUTION_TIMEOUT" envDefault:"10s"`
 }
 
 type ProfilerConfig struct {
@@ -47,8 +39,6 @@ type ProfilerConfig struct {
 type Config struct {
 	App       AppConfig       `yaml:"app"`
 	TCPClient TCPClientConfig `yaml:"tcp_client"`
-	TCPServer TCPServerConfig `yaml:"tcp_server"`
-	Redis     RedisConfig     `yaml:"redis"`
 	Profiler  ProfilerConfig  `yaml:"profiler"`
 }
 
