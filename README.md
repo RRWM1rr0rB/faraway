@@ -6,15 +6,21 @@
 Design and implement “Word of Wisdom” TCP server.
 
 • TCP server should be protected from DDoS attacks with Proof of Work (https://en.wikipedia.org/wiki/Proof_of_work), using a challenge-response protocol.
+
 • The choice of the PoW algorithm should be explained.
+
 • After Proof of Work verification, the server should send one of the quotes from the “Word of Wisdom” book or another collection of quotes.
+
 • Docker files should be provided for both the server and the client that solves the PoW challenge.
 
 ### ✨ Features:
 
 🔐 **PoW protection**: Prevents brute-force and bot-based DDoS attacks.
+
 ⚡ **SHA-256 based challenge**: Adjustable difficulty depending on server load.
+
 📖 **Quote delivery**: Once PoW is verified, the server sends a quote from the "Word of Wisdom" collection.
+
 🐳 **Docker support**: Dockerized setup for both server and client.
 
 ### 🛡️ Proof of Work (PoW) Algorithm Choice
@@ -22,11 +28,17 @@ Design and implement “Word of Wisdom” TCP server.
 When selecting a PoW algorithm, the main consideration is the type of attackers we aim to defend against. Typically, small hacker groups, competitors, or individual attackers cannot afford high-cost servers. Even if they do, they need to migrate quickly from one server to another, making an efficient and adaptable PoW crucial.
 
 ❓ **Why SHA-256?**
+
 ✔️ **Security & Performance**: Unlike SHA-1, which is outdated and insecure, SHA-256 offers strong cryptographic security.
+
 ✔️ **Avoiding Self-DDoS**: Algorithms like Scrypt and Argon2, while effective against bots, are too resource-intensive and could overload our own server.
+
 ✔️ **Dynamic Difficulty Adjustment**:
+
 📈 Increased load → higher difficulty.
+
 🚫 High requests from a single IP → adaptive difficulty increase.
+
 ❌ Persistent offenders → temporary IP ban (e.g., 24 hours).
 
 | ⚙️ Algorithm | 🏗️ Type         | 📱 Mobile-Friendly?       |   ⚖️ Balance of Difficulty   | 🛡️ Protection Against Bots      |
