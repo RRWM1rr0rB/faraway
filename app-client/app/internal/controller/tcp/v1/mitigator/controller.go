@@ -45,60 +45,29 @@ func (c *Controller) GetQuote(ctx context.Context, cfg *config.TCPClientConfig) 
 	}
 
 	// 3. Solve PoW Challenge
-	solveCtx, cancelSolve := context.WithTimeout(ctx, cfg.SolutionTimeout)
-	defer cancelSolve()
-	solution, solutionErr := c.policy.SolvePoWChallenge(solveCtx, *challenge)
+	solution, solutionErr := c.solvePoWChallenge(ctx, *challenge, cfg)
 	if solutionErr != nil {
-		return "", errors.Wrap(err, "failed to solve PoW challenge")
+		return "", errors.Wrap(solutionErr, "failed to solve PoW challenge")
 	}
-	logger.Debug("PoW solution found", logging.Uint64Attr("nonce", solution.Nonce))
 
 	// 4. Send PoW Solution
-	solutionBytes, jsonErr := json.Marshal(solution)
-	if jsonErr != nil {
-		return "", errors.Wrap(jsonErr, "failed to marshal PoW solution")
-	}
-
-	logger.Debug("Sending PoW solution...")
-	// Add newline for server-side reading with buffered reader.
-	if writeErr := client.Write(append(solutionBytes, '\n')); writeErr != nil {
-		return "", errors.Wrap(writeErr, "failed to write PoW solution")
+	err = c.sendPoWSolution(ctx, client, solution)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to send PoW solution")
 	}
 
 	// 5. Wait for Quote
-	logger.Debug("Waiting for quote...")
-	// Set deadline for reading the quote
-	readCtxQuote, cancelReadQuote := context.WithTimeout(ctx, cfg.ReadTimeout)
-	defer cancelReadQuote()
-	quoteRespBytes, quoteRespBytesErr := readFromClient(readCtxQuote, client)
-	if quoteRespBytesErr != nil {
-		return "", errors.Wrap(quoteRespBytesErr, "failed to read quote response")
+	logging.L(ctx).Debug("Waiting for quote...")
+	quote, quoteErr := c.waitQuoteResponse(ctx, client, cfg)
+	if quoteErr != nil {
+		return "", errors.Wrap(quoteErr, "failed to wait for quote")
 	}
 
-	var quoteResp mitigator.QuoteResponse
-	if jsonUnmarshalErr := json.Unmarshal(quoteRespBytes, &quoteResp); jsonUnmarshalErr != nil {
-		logger.Error(
-			"Failed to unmarshal quote response JSON",
-			logging.ErrAttr(jsonUnmarshalErr),
-			logging.StringAttr("raw_data", string(quoteRespBytes)),
-		)
-		return "", errors.Wrap(jsonUnmarshalErr, "failed to unmarshal quote response")
-	}
-
-	if quoteResp.Error != "" {
-		logger.Warn("Received error message from server", logging.StringAttr("error", quoteResp.Error))
-		return "", fmt.Errorf("server error: %s", quoteResp.Error)
-	}
-
-	if quoteResp.Quote == "" {
-		logger.Warn("Received empty quote from server")
-		return "", fmt.Errorf("received empty quote from server")
-	}
-
-	logger.Info("Quote received successfully")
-	return quoteResp.Quote, nil
+	return quote, nil
 }
 
+// waitPoWChallenge waits for a PoW challenge from the server and returns the parsed
+// challenge. It returns an error if the challenge cannot be read within the timeout.
 func (c *Controller) waitPoWChallenge(ctx context.Context, client *tcp.Client, cfg *config.TCPClientConfig) (*mitigator.PoWChallenge, error) {
 	// Set deadline for reading the challenge
 	readCtx, cancelReadChallenge := context.WithTimeout(ctx, cfg.ReadTimeout)
@@ -111,12 +80,89 @@ func (c *Controller) waitPoWChallenge(ctx context.Context, client *tcp.Client, c
 	var challenge mitigator.PoWChallenge
 	if jsonErr := json.Unmarshal(challengeBytes, &challenge); jsonErr != nil {
 		// Log the raw bytes received for debugging
-		logging.L(ctx).Error("Failed to unmarshal PoW challenge JSON", logging.ErrAttr(jsonErr), logging.StringAttr("raw_data", string(challengeBytes)))
+		logging.L(ctx).Error(
+			"Failed to unmarshal PoW challenge JSON",
+			logging.ErrAttr(jsonErr),
+			logging.StringAttr("raw_data", string(challengeBytes)),
+		)
 		return nil, errors.Wrap(jsonErr, "failed to unmarshal pow challenge")
 	}
 	logging.L(ctx).Info("PoW challenge received", logging.IntAttr("difficulty", int(challenge.Difficulty)))
 
 	return &challenge, nil
+}
+
+// solvePoWChallenge solves the given Proof-of-Work challenge using the policy.
+// It returns the solution or an error if the challenge cannot be solved within the timeout.
+func (c *Controller) solvePoWChallenge(
+	ctx context.Context,
+	challenge mitigator.PoWChallenge,
+	cfg *config.TCPClientConfig,
+) (*mitigator.PoWSolution, error) {
+	// Create a context with a timeout for solving the PoW challenge
+	solveCtx, cancelSolve := context.WithTimeout(ctx, cfg.SolutionTimeout)
+	defer cancelSolve()
+
+	// Use the policy to solve the PoW challenge
+	solution, solutionErr := c.policy.SolvePoWChallenge(solveCtx, challenge)
+	if solutionErr != nil {
+		return nil, errors.Wrap(solutionErr, "failed to solve PoW challenge")
+	}
+
+	// Log the successful solution with the found nonce
+	logging.L(ctx).Debug("PoW solution found", logging.Uint64Attr("nonce", solution.Nonce))
+
+	return solution, nil
+}
+
+func (c *Controller) sendPoWSolution(ctx context.Context, client *tcp.Client, solution *mitigator.PoWSolution) error {
+	solutionBytes, jsonErr := json.Marshal(solution)
+	if jsonErr != nil {
+		return errors.Wrap(jsonErr, "failed to marshal PoW solution")
+	}
+
+	logging.L(ctx).Debug("Sending PoW solution...")
+	// Add newline for server-side reading with buffered reader.
+	if writeErr := client.Write(append(solutionBytes, '\n')); writeErr != nil {
+		return errors.Wrap(writeErr, "failed to write PoW solution")
+	}
+
+	return nil
+}
+
+func (c *Controller) waitQuoteResponse(ctx context.Context, client *tcp.Client, cfg *config.TCPClientConfig) (string, error) {
+	logging.L(ctx).Debug("Waiting for quote...")
+	// Set deadline for reading the quote
+	readCtxQuote, cancelReadQuote := context.WithTimeout(ctx, cfg.ReadTimeout)
+	defer cancelReadQuote()
+	quoteRespBytes, quoteRespBytesErr := readFromClient(readCtxQuote, client)
+	if quoteRespBytesErr != nil {
+		return "", errors.Wrap(quoteRespBytesErr, "failed to read quote response")
+	}
+
+	var quoteResp mitigator.QuoteResponse
+	if jsonUnmarshalErr := json.Unmarshal(quoteRespBytes, &quoteResp); jsonUnmarshalErr != nil {
+		logging.L(ctx).Error(
+			"Failed to unmarshal quote response JSON",
+			logging.ErrAttr(jsonUnmarshalErr),
+			logging.StringAttr("raw_data", string(quoteRespBytes)),
+		)
+		return "", errors.Wrap(jsonUnmarshalErr, "failed to unmarshal quote response")
+	}
+
+	if quoteResp.Error != "" {
+		logging.L(ctx).Warn("Received error message from server", logging.StringAttr("error", quoteResp.Error))
+		return "", fmt.Errorf("server error: %s", quoteResp.Error)
+	}
+
+	if quoteResp.Quote == "" {
+		logging.L(ctx).Warn("Received empty quote from server")
+		return "", fmt.Errorf("received empty quote from server")
+	}
+
+	logging.L(ctx).Info("Quote received successfully")
+
+	return quoteResp.Quote, nil
 }
 
 // Helper function to read until newline with context support using the tcp.Client's Read method
