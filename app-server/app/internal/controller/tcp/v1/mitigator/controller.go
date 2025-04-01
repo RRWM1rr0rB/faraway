@@ -8,10 +8,6 @@ import (
 	"io"
 	"log/slog"
 	"net"
-	"time"
-
-	"app-server/app/internal/policy/mitigator"
-	tcp_lib "github.com/RRWM1rr0rB/faraway_lib/backend/golang/core/tcp" // Alias to avoid naming collision if types were identical
 )
 
 const (
@@ -21,7 +17,7 @@ const (
 
 // HandleConnection implements the tcp.HandlerFunc interface.
 // It reads requests, gets wisdom, and sends responses.
-func (h *Handler) HandleConnection(ctx context.Context, conn net.Conn) error {
+func (h *Controller) HandleConnection(ctx context.Context, conn net.Conn) error {
 	clientAddr := conn.RemoteAddr().String()
 	h.log.InfoContext(ctx, "Handling new connection", slog.String("client_addr", clientAddr))
 
@@ -107,4 +103,4 @@ func (h *Handler) HandleConnection(ctx context.Context, conn net.Conn) error {
 }
 
 // Ensure Handler implements the required interface from tcp package
-var _ tcp_lib.HandlerFunc = (&Handler{}).HandleConnection
+var _ tcp.HandlerFunc = (&Handler{}).HandleConnection

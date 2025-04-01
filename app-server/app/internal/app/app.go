@@ -5,16 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"time"
 
-	"faraway/app-server/app/internal/config"
-	tcp_lib "faraway/tcp" // Alias
+	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/core/tcp"
+
+	"app-server/app/internal/config"
 )
 
 // App represents the main server application.
 type App struct {
 	log       *slog.Logger
-	tcpServer *tcp_lib.Server
+	tcpServer *tcp.TCPServer
 	cfg       *config.Config
 }
 
@@ -35,7 +35,7 @@ func (a *App) Run() error {
 	a.log.Info("Starting TCP server...")
 	// Run the server. This will block until Shutdown is called or an error occurs.
 	err := a.tcpServer.Run()
-	if err != nil && !errors.Is(err, tcp_lib.ErrServerClosed) {
+	if err != nil && !errors.Is(err, tcp.ErrServerClosed) {
 		a.log.Error("TCP server failed", slog.String("error", err.Error()))
 		return fmt.Errorf("tcp server run error: %w", err)
 	}
