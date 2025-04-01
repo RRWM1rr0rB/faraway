@@ -1,104 +1,107 @@
 package config
 
 import (
+	"errors"
 	"fmt"
-	"log"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
 )
 
-type AppConfig struct {
-	ID            string `yaml:"id" env:"APP_ID"`
-	Name          string `yaml:"name" env:"APP_NAME"`
-	Version       string `yaml:"version" env:"APP_VERSION"`
-	IsDevelopment bool   `yaml:"is_dev" env:"APP_IS_DEVELOPMENT"`
-	LogLevel      string `yaml:"log_level" env:"APP_LOG_LEVEL"`
-	IsLogJSON     bool   `yaml:"is_log_json" env:"APP_IS_LOG_JSON"`
-	Domain        string `yaml:"domain" env:"APP_DOMAIN"`
+// Config remains the same structure
+type Config struct {
+	Env             string        `mapstructure:"env"`
+	AppName         string        `mapstructure:"app_name"`
+	ShutdownTimeout time.Duration `mapstructure:"shutdown_timeout"`
+	Logger          LoggerConfig  `mapstructure:"logger"`
+	TCP             TCPConfig     `mapstructure:"tcp"`
 }
 
-type TCPClientConfig struct {
-}
-
-type TCPServerConfig struct {
-}
-
-type RedisConfig struct {
-	Address     string        `yaml:"address" env:"REDIS_ADDRESS"`
-	Password    string        `yaml:"password" env:"REDIS_PASSWORD"`
-	DB          int           `yaml:"db" env:"REDIS_DB"`
-	TLS         bool          `yaml:"is_tls" env:"REDIS_ISTLS"`
-	MaxAttempts int           `yaml:"max_attempts" env:"REDIS_MAX_ATTEMTPS"`
-	MaxDelay    time.Duration `yaml:"max_delay" env:"REDIS_MAX_DELAY"`
+type LoggerConfig struct {
+	Level string `mapstructure:"level"`
 }
 
 type ProfilerConfig struct {
-	IsEnabled         bool          `yaml:"enabled" env:"PROFILER_ENABLED"`
-	Host              string        `yaml:"host" env:"PROFILER_HOST"`
-	Port              int           `yaml:"port" env:"PROFILER_PORT"`
-	ReadHeaderTimeout time.Duration `yaml:"read_header_timeout" env:"PROFILER_READ_HEADER_TIMEOUT"`
+	IsEnabled         bool          `mapstructure:"enabled"`
+	Host              string        `mapstructure:"host"`
+	Port              int           `mapstructure:"port"`
+	ReadHeaderTimeout time.Duration `mapstructure:"read_header_timeout"`
 }
 
-type Config struct {
-	App       AppConfig       `yaml:"app"`
-	TCPClient TCPClientConfig `yaml:"tcp_client"`
-	TCPServer TCPServerConfig `yaml:"tcp_server"`
-	Redis     RedisConfig     `yaml:"redis"`
-	Profiler  ProfilerConfig  `yaml:"profiler"`
+type TCPConfig struct {
+	Addr           string        `mapstructure:"addr"`
+	PowDifficulty  int           `mapstructure:"pow_difficulty"`
+	EnableTLS      bool          `mapstructure:"enable_tls"`
+	CertFile       string        `mapstructure:"cert_file"`
+	KeyFile        string        `mapstructure:"key_file"`
+	ReadTimeout    time.Duration `mapstructure:"read_timeout"`
+	WriteTimeout   time.Duration `mapstructure:"write_timeout"`
+	HandlerTimeout time.Duration `mapstructure:"handler_timeout"`
 }
 
-var (
-	cfg *Config
-)
+// LoadConfig loads configuration using Viper.
+func LoadConfig(configPath string) (*Config, error) {
+	v := viper.New()
 
-func LoadConfig(configPath string) *Config {
-	if configPath == "" {
-		if envPath, ok := os.LookupEnv("CONFIG_PATH"); ok {
-			configPath = envPath
-		} else {
-			log.Fatal("No config path provided and CONFIG_PATH not set")
+	// --- Set Default Values ---
+	v.SetDefault("env", "local")
+	v.SetDefault("app_name", "faraway-server")
+	v.SetDefault("shutdown_timeout", 5*time.Second)
+	v.SetDefault("logger.level", "info")
+	v.SetDefault("tcp.addr", ":8081") // Default listen address
+	v.SetDefault("tcp.pow_difficulty", 20)
+	v.SetDefault("tcp.enable_tls", false)
+	v.SetDefault("tcp.cert_file", "")
+	v.SetDefault("tcp.key_file", "")
+	v.SetDefault("tcp.read_timeout", 10*time.Second)
+	v.SetDefault("tcp.write_timeout", 10*time.Second)
+	v.SetDefault("tcp.handler_timeout", 20*time.Second)
+
+	// --- Configure Viper ---
+	// Read config file if provided
+	if configPath != "" {
+		v.SetConfigFile(configPath)
+		// Attempt to read the config file
+		if err := v.ReadInConfig(); err != nil {
+			// Handle specific error type: ConfigFileNotFoundError
+			var configFileNotFoundError viper.ConfigFileNotFoundError
+			if !errors.As(err, &configFileNotFoundError) {
+				// It's an error other than file not found
+				return nil, fmt.Errorf("failed to read config file %s: %w", configPath, err)
+			}
+			// Config file not found; proceed with defaults/env vars
+			fmt.Printf("Config file not found at %s, using defaults and environment variables\n", configPath)
 		}
+	} else {
+		// Optional: Search for config file in standard paths if no specific path is given
+		// v.SetConfigName("config.server") // Name of config file (without extension)
+		// v.AddConfigPath("./configs") // Path to look for the config file in
+		// v.AddConfigPath(".")         // Current directory
+		// if err := v.ReadInConfig(); err != nil { ... } // Handle error
+		fmt.Println("No config file path provided, using defaults and environment variables")
 	}
 
-	absPath, err := filepath.Abs(configPath)
-	if err != nil {
-		log.Fatalf("failed to get absolute path of config: %v", err)
+	// Enable reading from environment variables
+	v.AutomaticEnv()
+	// Optional: Set a prefix for environment variables (e.g., FARAWAY_SERVER_LOGGER_LEVEL)
+	// v.SetEnvPrefix("FARAWAY_SERVER")
+	// Replace dots in keys with underscores for env var names (e.g., logger.level -> LOGGER_LEVEL)
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	// --- Unmarshal into Struct ---
+	var cfg Config
+	if err := v.Unmarshal(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	viper.SetConfigFile(absPath)
-	viper.SetConfigType("yaml")
-
-	viper.AutomaticEnv()
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-
-	if readInConfigErr := viper.ReadInConfig(); readInConfigErr != nil {
-		log.Fatalf("failed to read config file: %v", readInConfigErr)
+	// --- Post-Load Validation ---
+	if cfg.TCP.EnableTLS && (cfg.TCP.CertFile == "" || cfg.TCP.KeyFile == "") {
+		return nil, errors.New("TLS is enabled but cert_file or key_file is missing in config")
+	}
+	if cfg.TCP.Addr == "" {
+		return nil, errors.New("TCP address (tcp.addr) cannot be empty")
 	}
 
-	cfg = &Config{}
-	if viperUnmErr := viper.Unmarshal(&cfg); viperUnmErr != nil {
-		log.Fatalf("failed to unmarshal config: %v", viperUnmErr)
-	}
-
-	fmt.Printf("Config loaded from: %s\n", absPath)
-
-	// Watch file changes
-	viper.WatchConfig()
-	viper.OnConfigChange(func(e fsnotify.Event) {
-		log.Println("Config file changed:", e.Name)
-		newCfg := &Config{}
-		if unmarshalErr := viper.Unmarshal(&newCfg); unmarshalErr != nil {
-			log.Printf("Failed to reload config: %v", unmarshalErr)
-		} else {
-			cfg = newCfg
-			log.Println("Config reloaded successfully")
-		}
-	})
-
-	return cfg
+	return &cfg, nil
 }

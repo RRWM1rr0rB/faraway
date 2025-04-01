@@ -1,7 +1,16 @@
+env: "local"
 app_name: "faraway-client"
-log_level: "debug" # Level: debug, info, warn, error
+shutdown_timeout: 5s # Timeout for graceful shutdown if applicable
 
-tcp_client:
-  url: "localhost:8081"
-  read_timeout: "15s"
-  solution_timeout: "60s"
+logger:
+  level: "debug"
+
+tcp:
+  server_addr: "localhost:8081" # Make sure this matches the server's addr
+  connect_timeout: 5s
+  request_timeout: 15s # Timeout for the GetWisdom operation
+  retry_attempts: 3
+  retry_delay: 1s
+  enable_tls: false # Must match server's TLS setting
+  # ca_cert_file: "path/to/ca.crt" # Path to CA cert if server TLS is enabled and using custom CA
+  # tls_insecure_skip_verify: false # Set to true only for testing if using self-signed certs without CA validation

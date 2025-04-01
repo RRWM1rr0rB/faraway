@@ -2,76 +2,75 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
+	"time"
 
-	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/core/closer"
-	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/core/safe/errorgroup"
-	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/errors"
-	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/logging"
-
-	"app-server/app/internal/config"
-	policy "app-server/app/internal/policy/mitigator"
+	"faraway/app-server/app/internal/config"
+	tcp_lib "faraway/tcp" // Alias
 )
 
+// App represents the main server application.
 type App struct {
-	cfg          *config.Config
-	serverRunner Runner
-	recover      errorgroup.RecoverFunc
-	closer       *closer.LIFOCloser
+	log       *slog.Logger
+	tcpServer *tcp_lib.Server
+	cfg       *config.Config
 }
 
-//nolint:funlen
-func NewApp(ctx context.Context) (*App, error) {
-	// 1. Load Configuration
-	cfg, err := config.Load()
+// New creates a new server Application instance.
+func New(ctx context.Context, log *slog.Logger, cfg *config.Config) (*App, error) {
+	log.Debug("Setting up application dependencies...")
+	app, err := setupDependencies(ctx, log, cfg)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load config")
+		return nil, fmt.Errorf("failed to setup dependencies: %w", err)
 	}
-
-	// 2. Initialize Logger (using level from config)
-	logger := logging.NewLogger(
-		logging.WithLevel(cfg.LogLevel),
-	)
-	ctx = logging.ContextWithLogger(ctx, logger)
-
-	// 3. Initialize Policy.
-	powSolver := policy.NewPoWSolver(cfg.TCPClient.SolutionTimeout)
-	logging.L(ctx).Info("PoW Solver initialized", logging.DurationAttr("max_solution_time", cfg.TCPClient.SolutionTimeout))
-
-	return &App{
-		cfg:          cfg,
-		serverRunner: serverRunner,
-		closer:       closer.NewLIFOCloser(),
-	}, nil
+	log.Debug("Application dependencies setup complete.")
+	return app, nil
 }
 
-func (a *App) Run(ctx context.Context) error {
-	// Create error group with panic recovery
-	g, ctx := errorgroup.WithContext(ctx, errorgroup.WithRecover(a.recover))
+// Run starts the server application.
+// It blocks until the server is shut down or an error occurs.
+func (a *App) Run() error {
+	a.log.Info("Starting TCP server...")
+	// Run the server. This will block until Shutdown is called or an error occurs.
+	err := a.tcpServer.Run()
+	if err != nil && !errors.Is(err, tcp_lib.ErrServerClosed) {
+		a.log.Error("TCP server failed", slog.String("error", err.Error()))
+		return fmt.Errorf("tcp server run error: %w", err)
+	}
+	a.log.Info("TCP server finished running.")
+	return nil // Normal exit or expected closure
+}
 
-	logging.L(ctx).Info("Starting main application logic")
+// Stop gracefully shuts down the application.
+func (a *App) Stop(ctx context.Context) error {
+	a.log.Info("Attempting graceful shutdown...")
 
-	// Run the server logic
-	g.Go(func(ctx context.Context) error {
-		// Pass the group's context to the runner
-		return a.serverRunner.Run(ctx)
-	})
+	shutdownCtx, cancel := context.WithTimeout(ctx, a.cfg.ShutdownTimeout)
+	defer cancel()
 
-	// Start profiler if enabled
-	if a.cfg.Profiler.IsEnabled {
-		g.Go(func(ctx context.Context) error {
-			return a.setupDebug(ctx)
-		})
+	// Shutdown TCP server
+	if a.tcpServer != nil {
+		a.log.Debug("Shutting down TCP server...")
+		if err := a.tcpServer.Shutdown(shutdownCtx); err != nil {
+			a.log.Error("TCP server shutdown failed", slog.String("error", err.Error()))
+			// Decide if this should return an error or just log it
+			// For now, log and continue if other shutdowns are needed
+			// return fmt.Errorf("tcp server shutdown failed: %w", err)
+		} else {
+			a.log.Info("TCP server shut down gracefully")
+		}
 	}
 
-	// Wait for the server runner to complete or context cancellation.
-	err := g.Wait()
-	if err != nil {
-		// Log the specific error from the runner.
-		logging.L(ctx).Error("Client runner failed", logging.ErrAttr(err))
-		return fmt.Errorf("application run failed: %w", err)
+	// Add cleanup for other resources if needed (e.g., database connections)
+
+	// Check if the shutdown context expired
+	if errors.Is(shutdownCtx.Err(), context.DeadlineExceeded) {
+		a.log.Warn("Shutdown timed out")
+		return fmt.Errorf("shutdown timed out (%s)", a.cfg.ShutdownTimeout)
 	}
 
-	logging.L(ctx).Info("Main application logic finished")
+	a.log.Info("Graceful shutdown completed.")
 	return nil
 }

@@ -2,41 +2,88 @@ package main
 
 import (
 	"context"
+	"flag"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/logging"
-
 	"app-server/app/internal/app"
+	"app-server/app/internal/config"
 )
 
+var configPath string
+
+func init() {
+	flag.StringVar(&configPath, "config", "configs/config.server.local.yaml", "path to config file")
+}
+
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	flag.Parse()
 
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-	go func() {
-		<-sigs
-		logging.L(ctx).Info("Received termination signal, shutting down...")
-		cancel()
-	}()
+	// Basic logger setup until config is loaded
+	log := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	log.Info("Logger initialized")
 
-	logging.L(ctx).Info("Starting application")
-
-	newApp, err := app.NewApp(ctx)
+	cfg, err := config.LoadConfig(configPath)
 	if err != nil {
-		logging.L(ctx).Error("Failed to initialize application", logging.ErrAttr(err))
+		log.Error("Failed to load config", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
+	// Setup logger based on config
+	log = setupLogger(cfg.Logger.Level)
+	log.Info("Configuration loaded successfully", slog.String("env", cfg.Env))
+	log.Debug("Full configuration", slog.Any("config", cfg))
+
+	application, err := app.New(ctx, log, cfg)
+	if err != nil {
+		log.Error("Failed to setup application", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+
+	log.Info("Starting application", slog.String("name", cfg.AppName), slog.String("addr", cfg.TCP.Addr))
+
 	go func() {
-		if runErr := newApp.Run(ctx); runErr != nil {
-			logging.L(ctx).Error("app run failed", logging.ErrAttr(runErr))
+		if err := application.Run(); err != nil {
+			log.Error("Application run failed", slog.String("error", err.Error()))
+			os.Exit(1)
 		}
 	}()
 
-	logging.L(ctx).Info("Application finished successfully")
+	// Wait for interrupt signal
+	<-ctx.Done()
+
+	log.Info("Received shutdown signal. Shutting down gracefully...")
+
+	// Perform graceful shutdown
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+	defer cancel()
+
+	if err := application.Stop(shutdownCtx); err != nil {
+		log.Error("Application shutdown failed", slog.String("error", err.Error()))
+		os.Exit(1) // Force exit if shutdown fails
+	}
+
+	log.Info("Application stopped gracefully")
+}
+
+func setupLogger(level string) *slog.Logger {
+	var logLevel slog.Level
+	switch level {
+	case "debug":
+		logLevel = slog.LevelDebug
+	case "info":
+		logLevel = slog.LevelInfo
+	case "warn":
+		logLevel = slog.LevelWarn
+	case "error":
+		logLevel = slog.LevelError
+	default:
+		logLevel = slog.LevelInfo
+	}
+	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
 }

@@ -1,84 +1,94 @@
 package config
 
 import (
+	"errors"
 	"fmt"
-	"os"
+	"strings"
 	"time"
 
-	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/errors"
 	"github.com/spf13/viper"
 )
 
-type (
-	// AppConfig represents the application configuration structure.
-	AppConfig struct {
-		AppName  string `mapstructure:"app_name"`
-		LogLevel string `mapstructure:"log_level"`
+// Config structure remains similar
+type Config struct {
+	Env             string        `mapstructure:"env"`
+	AppName         string        `mapstructure:"app_name"`
+	ShutdownTimeout time.Duration `mapstructure:"shutdown_timeout"`
+	Logger          LoggerConfig  `mapstructure:"logger"`
+	TCP             TCPConfig     `mapstructure:"tcp"`
+}
 
-		TCPClient TCPClientConfig `mapstructure:"tcp_client"`
-	}
+type LoggerConfig struct {
+	Level string `mapstructure:"level"`
+}
 
-	// TCPClientConfig holds the configuration specific to the TCP client.
-	TCPClientConfig struct {
-		URL             string        `mapstructure:"url"`              // Server address (e.g., "localhost:8081")
-		ReadTimeout     time.Duration `mapstructure:"read_timeout"`     // Timeout for reading challenge/quote
-		SolutionTimeout time.Duration `mapstructure:"solution_timeout"` // Max time allowed to solve PoW
-		// Add TLS config if needed (e.g., InsecureSkipVerify)
-		// TLSEnabled         bool `mapstructure:"tls_enabled"`
-		// TLSInsecureSkipVerify bool `mapstructure:"tls_insecure_skip_verify"`
-	}
-)
+type TCPConfig struct {
+	ServerAddr            string        `mapstructure:"server_addr"`
+	ConnectTimeout        time.Duration `mapstructure:"connect_timeout"`
+	RequestTimeout        time.Duration `mapstructure:"request_timeout"`
+	RetryAttempts         int           `mapstructure:"retry_attempts"`
+	RetryDelay            time.Duration `mapstructure:"retry_delay"`
+	EnableTLS             bool          `mapstructure:"enable_tls"`
+	CaCertFile            string        `mapstructure:"ca_cert_file"`
+	TlsInsecureSkipVerify bool          `mapstructure:"tls_insecure_skip_verify"`
+}
 
-// Load configuration from file and environment variables.
-func Load() (*AppConfig, error) {
-	vip := viper.New()
-	var cfg AppConfig
+// LoadConfig loads configuration using Viper.
+func LoadConfig(configPath string) (*Config, error) {
+	v := viper.New()
 
-	// Set default values
-	vip.SetDefault("app_name", "faraway-client")
-	vip.SetDefault("log_level", "info")
-	vip.SetDefault("tcp_client.url", "localhost:8081")
-	vip.SetDefault("tcp_client.read_timeout", "15s")
-	vip.SetDefault("tcp_client.solution_timeout", "60s")
+	// --- Set Default Values ---
+	v.SetDefault("env", "local")
+	v.SetDefault("app_name", "faraway-client")
+	v.SetDefault("shutdown_timeout", 5*time.Second)
+	v.SetDefault("logger.level", "info")
+	v.SetDefault("tcp.server_addr", "localhost:8081") // Default server address
+	v.SetDefault("tcp.connect_timeout", 5*time.Second)
+	v.SetDefault("tcp.request_timeout", 15*time.Second)
+	v.SetDefault("tcp.retry_attempts", 3)
+	v.SetDefault("tcp.retry_delay", 1*time.Second)
+	v.SetDefault("tcp.enable_tls", false)
+	v.SetDefault("tcp.ca_cert_file", "")
+	v.SetDefault("tcp.tls_insecure_skip_verify", false)
 
-	// --- Configuration file setup ---
-	configPath := os.Getenv(envConfigPath)
-	if configPath == "" {
-		configPath = defaultConfigPath
-		fmt.Printf("Environment variable %s not set, using default config path: %s\n", envConfigPath, configPath)
-	} else {
-		fmt.Printf("Using config path from environment variable %s: %s\n", envConfigPath, configPath)
-	}
-
-	vip.SetConfigFile(configPath)
-	vip.SetConfigType("yaml") // Or "json", "toml", etc.
-
-	// Attempt to read the config file
-	if err := vip.ReadInConfig(); err != nil {
-		// It's okay if the config file doesn't exist if using defaults or env vars
-		var configFileNotFoundError viper.ConfigFileNotFoundError
-		if !errors.As(err, &configFileNotFoundError) {
-			return nil, errors.Wrap(err, "failed to read config file")
+	// --- Configure Viper ---
+	if configPath != "" {
+		v.SetConfigFile(configPath)
+		if err := v.ReadInConfig(); err != nil {
+			var configFileNotFoundError viper.ConfigFileNotFoundError
+			if !errors.As(err, &configFileNotFoundError) {
+				return nil, fmt.Errorf("failed to read config file %s: %w", configPath, err)
+			}
+			fmt.Printf("Config file not found at %s, using defaults and environment variables\n", configPath)
 		}
-		fmt.Printf("Config file %s not found, using defaults and environment variables.\n", configPath)
 	} else {
-		fmt.Printf("Loaded configuration from %s\n", configPath)
+		fmt.Println("No config file path provided, using defaults and environment variables")
 	}
 
-	// --- Environment variables setup ---
-	vip.AutomaticEnv() // Read environment variables that match keys
+	// Enable reading from environment variables
+	v.AutomaticEnv()
+	// Optional: Set a prefix for environment variables (e.g., FARAWAY_CLIENT_TCP_SERVER_ADDR)
+	// v.SetEnvPrefix("FARAWAY_CLIENT")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
-	// Unmarshal the config
-	if err := vip.Unmarshal(&cfg); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal config")
+	// --- Unmarshal into Struct ---
+	var cfg Config
+	if err := v.Unmarshal(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	// Optional: Add validation logic here
-	if cfg.TCPClient.URL == "" {
-		return nil, fmt.Errorf("tcp_client.url is required in config")
+	// --- Post-Load Validation ---
+	if cfg.TCP.ServerAddr == "" {
+		return nil, errors.New("TCP server address (tcp.server_addr) cannot be empty")
 	}
-
-	fmt.Printf("Configuration loaded: AppName=%s, LogLevel=%s, ServerURL=%s\n", cfg.AppName, cfg.LogLevel, cfg.TCPClient.URL)
+	if cfg.TCP.EnableTLS && cfg.TCP.CaCertFile == "" && !cfg.TCP.TlsInsecureSkipVerify {
+		// If TLS is on, we usually need a CA cert unless we explicitly skip verification (not recommended for production)
+		fmt.Println("Warning: TLS is enabled but no CA certificate (ca_cert_file) provided, and insecure skip verify is false. System CAs will be used.")
+		// Depending on requirements, you might want to make ca_cert_file mandatory here.
+	}
+	if cfg.TCP.EnableTLS && cfg.TCP.TlsInsecureSkipVerify {
+		fmt.Println("Warning: TLS is enabled with insecure_skip_verify=true. Certificate validation is disabled!")
+	}
 
 	return &cfg, nil
 }

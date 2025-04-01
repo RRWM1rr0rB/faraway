@@ -5,10 +5,6 @@ import (
 	"app-server/app/internal/policy"
 )
 
-type Service interface {
-	//.. redis
-}
-
 type Policy struct {
 	*policy.BasePolicy
 	service Service
