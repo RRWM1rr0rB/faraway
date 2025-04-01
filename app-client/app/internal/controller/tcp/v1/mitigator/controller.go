@@ -6,11 +6,13 @@ import (
 	"log"
 	"net"
 
+	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/core/tcp"
+
 	"app-client/app/internal/config"
 	"app-client/app/internal/policy/mitigator"
 )
 
-func (c *Client) GetQuote() (string, error) {
+func (c *Client) GetChallenge() (string, error) {
 	serverConn, err := net.Dial(config.TCP, c.cfg.TCPClient.URL)
 	if err != nil {
 		return "", fmt.Errorf("failed to connect with server on %v: %w", c.cfg.TCPClient.URL, err)
@@ -18,60 +20,54 @@ func (c *Client) GetQuote() (string, error) {
 
 	defer func() {
 		log.Printf("closing connection to server")
-		tcp.CloseConnection(serverConn)
+		tcp.Close(serverConn)
 	}()
 
 	log.Printf("connected with server")
 
-	challenge, err := c.waitChallenge(serverConn)
-	if err != nil {
-		return "", fmt.Errorf("failed to received challenge: %w", err)
+	challenge, waitChallengeErr := c.waitChallenge(serverConn)
+	if waitChallengeErr != nil {
+		return "", fmt.Errorf("failed to received challenge: %w", waitChallengeErr)
 	}
 
-	solution, err := c.policy.SolveChallenge(*challenge)
-	if err != nil {
-		return "", fmt.Errorf("failed to solve challenge: %w", err)
+	solution, solvePoWChallengeErr := c.policy.SolvePoWChallenge(challenge)
+	if solvePoWChallengeErr != nil {
+		return "", fmt.Errorf("failed to solve challenge: %w", solvePoWChallengeErr)
 	}
 
-	err = sendSolution(serverConn, solution)
+	err = sendSolution(serverConn, solution.Nonce)
 	if err != nil {
 		return "", fmt.Errorf("failed to send solution to server: %w", err)
 	}
 
-	quote, err := c.waitQuote(serverConn)
-	if err != nil {
-		return "", fmt.Errorf("failed to receive quote: %w", err)
+	quote, waitQuoteErr := c.waitQuote(serverConn)
+	if waitQuoteErr != nil {
+		return "", fmt.Errorf("failed to receive quote: %w", waitQuoteErr)
 	}
 
 	return quote, nil
 }
 
-func (c *Client) waitChallenge(serverConn net.Conn) (*mitigator.PoWCalc, error) {
-	data, err := tcp.ReadWithDeadline(serverConn, c.connReadDeadline)
+func (c *Client) waitChallenge(serverConn net.Conn) (*mitigator.PoWChallenge, error) {
+	challenge, err := tcp.ReadPoWChallenge(serverConn)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read message: %w", err)
-	}
-
-	message := api.Challenge{}
-	err = json.Unmarshal(data, &message)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal challenge %s: %w", data, err)
-	}
-
-	challenge := challenger.ChallengeInfo{
-		RandomString:          message.RandomString,
-		NumberLeadingZeros:    message.NumberLeadingZeros,
-		SolutionNumberSymbols: message.SolutionNumberSymbols,
+		return nil, fmt.Errorf("failed to read PoW challenge: %w", err)
 	}
 
 	log.Printf("challenge received: %+v", challenge)
 
-	return &challenge, nil
+	powChallenge := &mitigator.PoWChallenge{
+		Timestamp:   challenge.Timestamp,
+		RandomBytes: challenge.RandomBytes,
+		Difficulty:  challenge.Difficulty,
+	}
+
+	return powChallenge, nil
 }
 
-func sendSolution(serverConn net.Conn, solution string) error {
-	message := api.Solution{
-		Solution: solution,
+func sendSolution(serverConn net.Conn, solution uint64) error {
+	message := mitigator.PoWSolution{
+		Nonce: solution,
 	}
 
 	data, err := json.Marshal(message)
@@ -92,13 +88,13 @@ func sendSolution(serverConn net.Conn, solution string) error {
 func (c *Client) waitQuote(serverConn net.Conn) (string, error) {
 	data, err := tcp.ReadWithDeadline(serverConn, c.connReadDeadline)
 	if err != nil {
-		return "", fmt.Errorf("failed to read message: %w", err)
+		return "", fmt.Errorf("failed to read quote: %w", err)
 	}
 
-	message := api.Quote{}
+	message := mitigator.Quote{}
 	err = json.Unmarshal(data, &message)
 	if err != nil {
-		return "", fmt.Errorf("failed to unmarshal quote %s: %w", data, err)
+		return "", fmt.Errorf("failed to unmarshal quote: %w", err)
 	}
 
 	log.Printf("quote received: %+v", message)

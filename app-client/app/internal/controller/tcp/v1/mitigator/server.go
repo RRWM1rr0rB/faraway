@@ -6,7 +6,7 @@ import (
 )
 
 type policy interface {
-	SolveChallenge(mitigator.PoWCalc) (string, error)
+	SolvePoWChallenge(challenge *mitigator.PoWChallenge) (*mitigator.PoWSolution, error)
 }
 
 type Client struct {

@@ -2,11 +2,14 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"sync"
 
 	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/core/clock"
 	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/core/closer"
 	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/core/safe/errorgroup"
+	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/core/tcp"
 	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/errors"
 	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/logging"
 
@@ -26,7 +29,13 @@ type Runner interface {
 type App struct {
 	cfg *config.Config
 
-	httpServer *http.Server
+	httpServer  *http.Server
+	tcpServer   *tcp.TCPServer
+	rateLimiter *tcp.RateLimiter
+	quotes      []string
+	tcpWg       sync.WaitGroup
+	tcpCtx      context.Context
+	tcpCancel   context.CancelFunc
 
 	policySpot *policyMitigator.Policy
 
@@ -68,13 +77,6 @@ func NewApp(ctx context.Context) (*App, error) {
 
 	// Init services.
 
-	// Init storage and service.
-	//----------------------------------------- Storage and Service ----------------------------------------------------
-	//storageSpot := storageSpot.NewStorage(postgresClient)
-	//serviceSpot := serviceSpot.NewService(storageSpot)
-
-	//----------------------------------------- End Storage and Service ------------------------------------------------
-
 	// Init policy.
 	basePolicy := policy.NewBasePolicy(
 		defClock,
@@ -84,6 +86,7 @@ func NewApp(ctx context.Context) (*App, error) {
 	app.policySpot = policyMitigator.NewPolicy(
 		basePolicy,
 		nil,
+		cfg.TCPClient,
 	)
 
 	return &app, nil
@@ -98,6 +101,22 @@ func (a *App) Run(ctx context.Context) error {
 		<-ctx.Done()
 		return a.httpServer.Shutdown(context.Background())
 	})
+
+	// --- Запуск TCP сервера ---
+	if a.tcpServer != nil {
+		g.Go(func(ctx context.Context) error {
+			logger := logging.L(ctx).With(logging.StringAttr("component", "tcp_server_runner"))
+			logger.Info("Starting TCP server...")
+			if err := a.tcpServer.Start(); err != nil {
+				logger.Error("TCP server start failed", logging.ErrAttr(err))
+				return fmt.Errorf("tcp server start error: %w", err)
+			}
+			logger.Info("TCP server stopped listening.")
+			return nil
+		})
+	} else {
+		logging.L(ctx).Warn("TCP server is nil, skipping run")
+	}
 
 	// Start profiler if enabled
 	if a.cfg.Profiler.IsEnabled {

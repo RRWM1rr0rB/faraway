@@ -1,7 +1,14 @@
 package mitigator
 
-type PoWCalc struct {
-	Rnd                   string
-	NumberLeadingZeros    int32
-	SolutionNumberSymbols int32
+type PoWChallenge struct {
+	Timestamp   int64
+	RandomBytes []byte
+	Difficulty  int32
+}
+
+type PoWSolution struct {
+	Nonce uint64
+}
+type Quote struct {
+	Quote string
 }
