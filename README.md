@@ -49,7 +49,7 @@ When selecting a PoW algorithm, the main consideration is the type of attackers 
 |   Argon2   | 🧠 Memory-bound | ❌ Heavy on phones     |    ✅ Excellent              | ✅ Best protection      |
 |  Hashcash  | 🖥️ CPU-bound | ✅ Yes                    |  ✅ Easy to adjust  | ⚠️ Moderate protection        |
 
-## 📂 Project Structure
+## 📂 Project Structure.
 ```
 ├── app-client
 │   ├── app
@@ -121,4 +121,112 @@ When selecting a PoW algorithm, the main consideration is the type of attackers 
 ├── deploy
 │   ├── Dockerfile.client.dockerfile
 │   └── Dockerfile.server.dockerfile
+```
+
+### 📂 Faraway lib Structure.
+
+```
+        ├── core
+        │   ├── array
+        │   │   └── array.go
+        │   ├── blacklist
+        │   │   └── blacklist.go
+        │   ├── bytes
+        │   │   └── bytes.go
+        │   ├── clock
+        │   │   ├── clock.go
+        │   │   └── interface.go
+        │   ├── closer
+        │   │   └── closer.go
+        │   ├── encryption
+        │   │   └── sha-256
+        │   │       └── sha_256.go
+        │   ├── go.mod
+        │   ├── go.sum
+        │   ├── pointer
+        │   │   └── pointer.go
+        │   ├── random
+        │   │   └── random.go
+        │   ├── repeat
+        │   │   ├── repeat.go
+        │   │   ├── repeat_http.go
+        │   │   └── repeat_ws.go
+        │   ├── safe
+        │   │   ├── errorgroup
+        │   │   │   └── errorgroup.go
+        │   │   ├── safe.go
+        │   │   └── waitgroup
+        │   │       └── waitgroup.go
+        │   ├── tcp
+        │   │   ├── client.go
+        │   │   ├── error.go
+        │   │   ├── middleware.go
+        │   │   ├── options.go
+        │   │   ├── pool.go
+        │   │   ├── pow.go
+        │   │   ├── retry.go
+        │   │   ├── server.go
+        │   │   └── tls.go
+        │   ├── time
+        │   │   └── time.go
+        │   ├── uuid
+        │   │   ├── db
+        │   │   │   └── uuid.go
+        │   │   ├── google_uuid
+        │   │   │   ├── interface.go
+        │   │   │   ├── ulid.go
+        │   │   │   └── uuid.go
+        │   │   ├── network
+        │   │   │   └── uuid.go
+        │   │   ├── uuid.go
+        │   │   └── uuid_test.go
+        │   └── version
+        ├── errors
+        │   ├── errors.go
+        │   ├── go.mod
+        │   ├── go.sum
+        │   └── version
+        ├── logging
+        │   ├── alias.go
+        │   ├── context.go
+        │   ├── go.mod
+        │   ├── go.sum
+        │   ├── logger.go
+        │   ├── logger_test.go
+        │   ├── middleware.go
+        │   └── version
+        ├── main.go
+        ├── metrics
+        │   ├── config.go
+        │   ├── go.mod
+        │   ├── go.sum
+        │   ├── grpc_middleware.go
+        │   ├── handler.go
+        │   ├── http_middleware.go
+        │   ├── metrics.go
+        │   ├── metrics_grpc_availability.go
+        │   ├── metrics_test.go
+        │   └── version
+        ├── pprof
+        │   ├── config.go
+        │   ├── go.mod
+        │   ├── server.go
+        │   ├── server_test.go
+        │   └── version
+        ├── redis
+        │   ├── aliases.go
+        │   ├── error.go
+        │   ├── go.mod
+        │   ├── go.sum
+        │   ├── metrics.go
+        │   ├── redis.go
+        │   └── version
+        └── tracing
+            ├── attrs.go
+            ├── go.mod
+            ├── go.sum
+            ├── middleware.go
+            ├── tracing.go
+            ├── tracing_config.go
+            └── version
 ```
