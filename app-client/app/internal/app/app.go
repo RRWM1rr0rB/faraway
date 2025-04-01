@@ -2,94 +2,84 @@ package app
 
 import (
 	"context"
-	"net/http"
+	"fmt"
 
-	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/core/clock"
 	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/core/closer"
 	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/core/safe/errorgroup"
 	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/errors"
 	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/logging"
 
 	"app-client/app/internal/config"
-	policyMitigator "app-client/app/internal/policy/mitigator"
+	"app-client/app/internal/controller/tcp/v1/mitigator"
+	policy "app-client/app/internal/policy/mitigator"
 )
 
-const (
-	cfgPath = "/Users/wm1rr0rb/workspace/faraway/configs/config.server.local.yaml"
-)
-
-type Runner interface {
-	Run(context.Context) error
-}
-
+// App is the main application structure.
 type App struct {
-	cfg *config.Config
-
-	policySpot *policyMitigator.Policy
-
-	runners []Runner
-	recover errorgroup.RecoverFunc
-	closer  *closer.LIFOCloser
+	cfg          *config.AppConfig
+	recover      errorgroup.RecoverFunc
+	clientRunner Runner // Use the Runner interface\
+	closer       *closer.LIFOCloser
 }
 
-func (a *App) AddRunner(runner Runner) {
-	a.runners = append(a.runners, runner)
-}
-
-//nolint:funlen
+// NewApp creates and initializes a new application instance.
 func NewApp(ctx context.Context) (*App, error) {
-	app := App{
-		closer: closer.NewLIFOCloser(),
+	// 1. Load Configuration
+	cfg, err := config.Load()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load config")
 	}
 
-	cfg := config.LoadConfig(cfgPath)
-	app.cfg = cfg
-
+	// 2. Initialize Logger (using level from config)
 	logger := logging.NewLogger(
-		logging.WithLevel(cfg.App.LogLevel),
-		logging.WithIsJSON(cfg.App.IsLogJSON),
+		logging.WithLevel(cfg.LogLevel),
 	)
 	ctx = logging.ContextWithLogger(ctx, logger)
 
-	logging.L(ctx).Info("config loaded", "config", cfg)
+	// Set as global logger if desired
+	logging.L(ctx).With(logging.StringAttr("app", cfg.AppName))
+	logging.L(ctx).Info("Logger initialized", logging.StringAttr("level", cfg.LogLevel))
 
-	// Init policy.
+	// 3. Initialize Policy (PoW Solver)
+	powSolver := policy.NewPoWSolver(cfg.TCPClient.SolutionTimeout)
+	logging.L(ctx).Info("PoW Solver initialized", logging.DurationAttr("max_solution_time", cfg.TCPClient.SolutionTimeout))
 
-	app.policySpot = policyMitigator.NewPolicy(
-		nil,
-		cfg.TCPClient,
-	)
+	// 4. Initialize Controller
+	tcpController := mitigator.NewController(powSolver)
+	logging.L(ctx).Info("TCP Controller initialized")
 
-	return &app, nil
+	// 5. Initialize Runner
+	clientRunner := NewClientRunner(tcpController, &cfg.TCPClient)
+	logging.L(ctx).Info("Client Runner initialized")
+
+	return &App{
+		cfg:          cfg,
+		clientRunner: clientRunner,
+		closer:       closer.NewLIFOCloser(),
+	}, nil
 }
 
+// Run starts the application's main logic.
+// For this client, it just runs the client logic once.
 func (a *App) Run(ctx context.Context) error {
-	// Create error group with panic recovery
 	g, ctx := errorgroup.WithContext(ctx, errorgroup.WithRecover(a.recover))
 
-	// Setup graceful shutdown on signals
+	logging.L(ctx).Info("Starting main application logic")
+
+	// Run the client logic
 	g.Go(func(ctx context.Context) error {
-		<-ctx.Done()
-		return a.httpServer.Shutdown(context.Background())
+		// Pass the group's context to the runner
+		return a.clientRunner.Run(ctx)
 	})
 
-	// Start profiler if enabled
-	if a.cfg.Profiler.IsEnabled {
-		g.Go(func(ctx context.Context) error {
-			return a.setupDebug(ctx)
-		})
+	// Wait for the client runner to complete or context cancellation
+	err := g.Wait()
+	if err != nil {
+		// Log the specific error from the runner
+		logging.L(ctx).Error("Client runner failed", logging.ErrAttr(err))
+		return fmt.Errorf("application run failed: %w", err)
 	}
 
-	// Start additional runners
-	for _, r := range a.runners {
-		runner := r // capture loop variable
-		g.Go(func(ctx context.Context) error {
-			return runner.Run(ctx)
-		})
-	}
-
-	logging.L(ctx).Info("application started")
-
-	// Wait for all goroutines and return aggregated errors
-	return g.Wait()
+	logging.L(ctx).Info("Main application logic finished")
+	return nil
 }

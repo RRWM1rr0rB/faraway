@@ -1,22 +1,31 @@
 package mitigator
 
 import (
-	"app-client/app/internal/config"
+	"context"
+
+	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/logging"
+
 	"app-client/app/internal/policy/mitigator"
 )
 
-type policy interface {
-	SolvePoWChallenge(challenge *mitigator.PoWChallenge) (*mitigator.PoWSolution, error)
+type Policy interface {
+	// SolvePoWChallenge attempts to find a valid nonce for the given challenge.
+	SolvePoWChallenge(ctx context.Context, challenge mitigator.PoWChallenge) (*mitigator.PoWSolution, error)
 }
 
-type Client struct {
-	policy policy
-	cfg    *config.Config
+// Controller is a component that is responsible for interacting with the
+// policy.
+// Controller handles the interaction with the TCP server.
+type Controller struct {
+	policy Policy // Dependency on the PoW solving policy
 }
 
-func New(policy policy, cfg *config.Config) *Client {
-	return &Client{
+// NewController creates a new TCP controller instance.
+func NewController(policy Policy) *Controller {
+	if policy == nil {
+		logging.Default().Error("policy cannot be nil")
+	}
+	return &Controller{
 		policy: policy,
-		cfg:    cfg,
 	}
 }

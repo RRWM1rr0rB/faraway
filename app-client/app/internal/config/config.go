@@ -1,94 +1,86 @@
 package config
 
 import (
+	"errors"
 	"fmt"
-	"log"
 	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
-	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/logging"
-	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
+
+	ferrors "github.com/RRWM1rr0rB/faraway_lib/backend/golang/errors"
 )
 
-type AppConfig struct {
-	ID            string `yaml:"id" env:"APP_ID"`
-	Name          string `yaml:"name" env:"APP_NAME"`
-	Version       string `yaml:"version" env:"APP_VERSION"`
-	IsDevelopment bool   `yaml:"is_dev" env:"APP_IS_DEVELOPMENT"`
-	LogLevel      string `yaml:"log_level" env:"APP_LOG_LEVEL"`
-	IsLogJSON     bool   `yaml:"is_log_json" env:"APP_IS_LOG_JSON"`
-	Domain        string `yaml:"domain" env:"APP_DOMAIN"`
-}
+type (
+	// AppConfig represents the application configuration structure.
+	AppConfig struct {
+		AppName  string `mapstructure:"app_name"`
+		LogLevel string `mapstructure:"log_level"`
 
-type TCPClientConfig struct {
-	URL             string        `yaml:"URL" env:"TCP_CLIENT_URL"`
-	ReadTimeout     time.Duration `env:"READ_TIMEOUT" envDefault:"2s"`
-	SolutionTimeout time.Duration `env:"SOLUTION_TIMEOUT" envDefault:"10s"`
-}
+		TCPClient TCPClientConfig `mapstructure:"tcp_client"`
+	}
 
-type ProfilerConfig struct {
-	IsEnabled         bool          `yaml:"enabled" env:"PROFILER_ENABLED"`
-	Host              string        `yaml:"host" env:"PROFILER_HOST"`
-	Port              int           `yaml:"port" env:"PROFILER_PORT"`
-	ReadHeaderTimeout time.Duration `yaml:"read_header_timeout" env:"PROFILER_READ_HEADER_TIMEOUT"`
-}
-
-type Config struct {
-	App       AppConfig       `yaml:"app"`
-	TCPClient TCPClientConfig `yaml:"tcp_client"`
-	Profiler  ProfilerConfig  `yaml:"profiler"`
-}
-
-var (
-	cfg *Config
+	// TCPClientConfig holds the configuration specific to the TCP client.
+	TCPClientConfig struct {
+		URL             string        `mapstructure:"url"`              // Server address (e.g., "localhost:8081")
+		ReadTimeout     time.Duration `mapstructure:"read_timeout"`     // Timeout for reading challenge/quote
+		SolutionTimeout time.Duration `mapstructure:"solution_timeout"` // Max time allowed to solve PoW
+		// Add TLS config if needed (e.g., InsecureSkipVerify)
+		// TLSEnabled         bool `mapstructure:"tls_enabled"`
+		// TLSInsecureSkipVerify bool `mapstructure:"tls_insecure_skip_verify"`
+	}
 )
 
-func LoadConfig(configPath string) *Config {
+// Load configuration from file and environment variables.
+func Load() (*AppConfig, error) {
+	vip := viper.New()
+	var cfg AppConfig
+
+	// Set default values
+	vip.SetDefault("app_name", "faraway-client")
+	vip.SetDefault("log_level", "info")
+	vip.SetDefault("tcp_client.url", "localhost:8081")
+	vip.SetDefault("tcp_client.read_timeout", "15s")
+	vip.SetDefault("tcp_client.solution_timeout", "60s")
+
+	// --- Configuration file setup ---
+	configPath := os.Getenv(envConfigPath)
 	if configPath == "" {
-		if envPath, ok := os.LookupEnv("CONFIG_PATH"); ok {
-			configPath = envPath
-		} else {
-			log.Fatal("No config path provided and CONFIG_PATH not set")
+		configPath = defaultConfigPath
+		fmt.Printf("Environment variable %s not set, using default config path: %s\n", envConfigPath, configPath)
+	} else {
+		fmt.Printf("Using config path from environment variable %s: %s\n", envConfigPath, configPath)
+	}
+
+	vip.SetConfigFile(configPath)
+	vip.SetConfigType("yaml") // Or "json", "toml", etc.
+
+	// Attempt to read the config file
+	if err := vip.ReadInConfig(); err != nil {
+		// It's okay if the config file doesn't exist if using defaults or env vars
+		var configFileNotFoundError viper.ConfigFileNotFoundError
+		if !errors.As(err, &configFileNotFoundError) {
+			return nil, ferrors.Wrap(err, "failed to read config file")
 		}
+		fmt.Printf("Config file %s not found, using defaults and environment variables.\n", configPath)
+	} else {
+		fmt.Printf("Loaded configuration from %s\n", configPath)
 	}
 
-	absPath, err := filepath.Abs(configPath)
-	if err != nil {
-		log.Fatalf("failed to get absolute path of config: %v", err)
+	// --- Environment variables setup ---
+	vip.AutomaticEnv() // Read environment variables that match keys
+
+	// Unmarshal the config
+	if err := vip.Unmarshal(&cfg); err != nil {
+		return nil, ferrors.Wrap(err, "failed to unmarshal config")
 	}
 
-	viper.SetConfigFile(absPath)
-	viper.SetConfigType("yaml")
-
-	viper.AutomaticEnv()
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-
-	if readInConfigErr := viper.ReadInConfig(); readInConfigErr != nil {
-		log.Fatalf("failed to read config file: %v", readInConfigErr)
+	// Optional: Add validation logic here
+	if cfg.TCPClient.URL == "" {
+		return nil, fmt.Errorf("tcp_client.url is required in config")
 	}
 
-	cfg = &Config{}
-	if viperUnmErr := viper.Unmarshal(&cfg); viperUnmErr != nil {
-		log.Fatalf("failed to unmarshal config: %v", viperUnmErr)
-	}
+	fmt.Printf("Configuration loaded: AppName=%s, LogLevel=%s, ServerURL=%s\n", cfg.AppName, cfg.LogLevel, cfg.TCPClient.URL)
 
-	fmt.Printf("Config loaded from: %s\n", absPath)
-
-	// Watch file changes
-	viper.WatchConfig()
-	viper.OnConfigChange(func(e fsnotify.Event) {
-		log.Println("Config file changed:", e.Name)
-		newCfg := &Config{}
-		if unmarshalErr := viper.Unmarshal(&newCfg); unmarshalErr != nil {
-			log.Printf("Failed to reload config: %v", unmarshalErr)
-		} else {
-			cfg = newCfg
-			log.Println("Config reloaded successfully")
-		}
-	})
-
-	return cfg
+	return &cfg, nil
 }

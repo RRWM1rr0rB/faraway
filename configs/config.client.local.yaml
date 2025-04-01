@@ -1,0 +1,7 @@
+app_name: "faraway-client"
+log_level: "debug" # Level: debug, info, warn, error
+
+tcp_client:
+  url: "localhost:8081"
+  read_timeout: "15s"
+  solution_timeout: "60s"
