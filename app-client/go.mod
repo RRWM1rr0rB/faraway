@@ -3,9 +3,13 @@ module app-client
 go 1.24.1
 
 require (
-	github.com/RRWM1rr0rB/faraway_lib/backend/golang/core v0.0.0-20250401130924-de9c0dc96461 // indirect
-	github.com/RRWM1rr0rB/faraway_lib/backend/golang/errors v0.0.0-20250401090624-2776c75e74b2 // indirect
-	github.com/RRWM1rr0rB/faraway_lib/backend/golang/logging v0.0.0-20250401090624-2776c75e74b2 // indirect
+	github.com/RRWM1rr0rB/faraway_lib/backend/golang/core v0.0.0-20250401130924-de9c0dc96461
+	github.com/RRWM1rr0rB/faraway_lib/backend/golang/errors v0.0.0-20250401090624-2776c75e74b2
+	github.com/RRWM1rr0rB/faraway_lib/backend/golang/logging v0.0.0-20250401090624-2776c75e74b2
+	github.com/spf13/viper v1.20.1
+)
+
+require (
 	github.com/RRWM1rr0rB/faraway_lib/backend/golang/tracing v0.0.0-20250401090624-2776c75e74b2 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -24,7 +28,6 @@ require (
 	github.com/spf13/afero v1.14.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
-	github.com/spf13/viper v1.20.1 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.60.0 // indirect
@@ -36,9 +39,9 @@ require (
 	go.opentelemetry.io/otel/sdk v1.35.0 // indirect
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.5.0 // indirect
-	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/net v0.38.0 // indirect
+	golang.org/x/sync v0.12.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250324211829-b45e905df463 // indirect

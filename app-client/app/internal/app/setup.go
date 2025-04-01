@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"app-client/app/internal/config"
-	"app-client/app/internal/controller/tcp/v1/mitigator"
-
 	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/errors"
 	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/logging"
+
+	"app-client/app/internal/config"
+	"app-client/app/internal/controller/tcp/v1/mitigator"
 )
 
 // Runner defines the interface for runnable application components.

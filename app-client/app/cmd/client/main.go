@@ -29,6 +29,7 @@ func main() {
 	newApp, err := app.NewApp(ctx)
 	if err != nil {
 		logging.L(ctx).Error("Failed to initialize application", logging.ErrAttr(err))
+		os.Exit(1)
 	}
 
 	go func() {

@@ -15,12 +15,20 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-sigs
+		logging.L(ctx).Info("Received termination signal, shutting down...")
+		cancel()
+	}()
+
+	logging.L(ctx).Info("Starting application")
 
 	newApp, err := app.NewApp(ctx)
 	if err != nil {
-		logging.L(ctx).Error("can't init a new app", logging.ErrAttr(err))
+		logging.L(ctx).Error("Failed to initialize application", logging.ErrAttr(err))
 		os.Exit(1)
 	}
 
@@ -30,7 +38,5 @@ func main() {
 		}
 	}()
 
-	<-sigChan
-	logging.L(ctx).Info("shutting down application")
-	cancel()
+	logging.L(ctx).Info("Application finished successfully")
 }

@@ -18,7 +18,7 @@ import (
 type App struct {
 	cfg          *config.AppConfig
 	recover      errorgroup.RecoverFunc
-	clientRunner Runner // Use the Runner interface\
+	clientRunner Runner
 	closer       *closer.LIFOCloser
 }
 
@@ -36,7 +36,6 @@ func NewApp(ctx context.Context) (*App, error) {
 	)
 	ctx = logging.ContextWithLogger(ctx, logger)
 
-	// Set as global logger if desired
 	logging.L(ctx).With(logging.StringAttr("app", cfg.AppName))
 	logging.L(ctx).Info("Logger initialized", logging.StringAttr("level", cfg.LogLevel))
 
