@@ -48,3 +48,78 @@ When selecting a PoW algorithm, the main consideration is the type of attackers 
 |   Scrypt   | 🧠 Memory-bound | ⚠️ High memory use |               ✅ Yes                | ✅ Strong protection         |
 |   Argon2   | 🧠 Memory-bound | ❌ Heavy on phones     |    ✅ Excellent              | ✅ Best protection      |
 |  Hashcash  | 🖥️ CPU-bound | ✅ Yes                    |  ✅ Easy to adjust  | ⚠️ Moderate protection        |
+
+## 📂 Project Structure
+```
+README.md
+├── app-client
+│   ├── app
+│   │   ├── cmd
+│   │   │   └── client
+│   │   │       └── main.go
+│   │   └── internal
+│   │       ├── app
+│   │       │   ├── app.go
+│   │       │   └── setup.go
+│   │       ├── config
+│   │       │   ├── config.go
+│   │       │   └── constants.go
+│   │       ├── controller
+│   │       │   └── tcp
+│   │       │       └── v1
+│   │       │           └── mitigator
+│   │       │               ├── controller.go
+│   │       │               └── server.go
+│   │       └── policy
+│   │           └── mitigator
+│   │               ├── dto.go
+│   │               ├── policy.go
+│   │               └── policy_migrator.go
+│   ├── go.mod
+│   └── go.sum
+├── app-server
+│   ├── app
+│   │   ├── cmd
+│   │   │   └── server
+│   │   │       └── main.go
+│   │   ├── internal
+│   │   │   ├── app
+│   │   │   │   ├── app.go
+│   │   │   │   └── setup.go
+│   │   │   ├── config
+│   │   │   │   ├── config.go
+│   │   │   │   └── constants.go
+│   │   │   ├── controller
+│   │   │   │   └── tcp
+│   │   │   │       └── mitigator
+│   │   │   ├── domain
+│   │   │   │   └── mitigator
+│   │   │   │       ├── model
+│   │   │   │       │   └── model.go
+│   │   │   │       ├── service
+│   │   │   │       │   └── service.go
+│   │   │   │       └── storage
+│   │   │   │           └── redis
+│   │   │   │               └── storage.go
+│   │   │   └── policy
+│   │   │       ├── base.go
+│   │   │       └── mitigator
+│   │   │           ├── dto.go
+│   │   │           ├── error.go
+│   │   │           ├── policy.go
+│   │   │           └── policy_mitigator.go
+│   │   └── pkg
+│   │       └── pow
+│   │           └── algo.go
+│   ├── go.mod
+│   └── go.sum
+├── configs
+│   ├── config.client.local.yaml
+│   ├── config.server.local.yaml
+│   └── docker-compose
+│       ├── docker-compose.client.local.yaml
+│       └── docker-compose.server.local.yaml
+├── deploy
+│   ├── Dockerfile.client.dockerfile
+│   └── Dockerfile.server.dockerfile
+```
