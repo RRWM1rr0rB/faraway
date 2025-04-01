@@ -51,7 +51,6 @@ When selecting a PoW algorithm, the main consideration is the type of attackers 
 
 ## 📂 Project Structure
 ```
-README.md
 ├── app-client
 │   ├── app
 │   │   ├── cmd
