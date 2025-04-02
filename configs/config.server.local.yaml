@@ -6,7 +6,7 @@ logger:
   level: "debug" # Use debug for local development
 
 tcp:
-  addr: ":8081" # Port for the server to listen on
+  addr: ":8080" # Port for the server to listen on
   pow_difficulty: 20 # Must match client expectations for PoW
   enable_tls: false # Set to true and configure cert/key files if needed
   # cert_file: "path/to/server.crt" # Uncomment and set path if TLS enabled

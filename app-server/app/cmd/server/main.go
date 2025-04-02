@@ -16,13 +16,8 @@ func main() {
 	defer cancel()
 
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 
-	go func() {
-		<-sigs
-		logging.L(ctx).Info("Received termination signal, shutting down...")
-		cancel()
-	}()
+	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 
 	logging.L(ctx).Info("Starting application")
 
@@ -32,11 +27,30 @@ func main() {
 		os.Exit(1)
 	}
 
+	runErrChan := make(chan error, 1)
 	go func() {
-		if runErr := newApp.Run(ctx); runErr != nil {
-			logging.L(ctx).Error("app run failed", logging.ErrAttr(runErr))
-		}
+		logging.L(ctx).Info("Application Run loop starting...")
+
+		runErrChan <- newApp.Run(ctx)
+		logging.L(ctx).Info("Application Run loop finished.")
 	}()
 
-	logging.L(ctx).Info("Application finished successfully")
+	logging.L(ctx).Info("Application started successfully. Waiting for signal...")
+
+	select {
+	case sig := <-sigs:
+		logging.L(ctx).Info("Received signal, initiating shutdown...", logging.StringAttr("signal", sig.String()))
+
+		cancel()
+	case runErrChanErr := <-runErrChan:
+		if runErrChanErr != nil {
+			logging.L(ctx).Error("Application run failed", logging.ErrAttr(runErrChanErr))
+		} else {
+			logging.L(ctx).Info("Application run completed.")
+		}
+
+		cancel()
+	}
+
+	logging.L(ctx).Info("Application shutdown complete.")
 }

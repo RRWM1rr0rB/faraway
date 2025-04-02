@@ -6,7 +6,7 @@ logger:
   level: "debug"
 
 tcp:
-  server_addr: "localhost:8081" # Make sure this matches the server's addr
+  server_addr: "localhost:808й" # Make sure this matches the server's addr
   connect_timeout: 5s
   request_timeout: 15s # Timeout for the GetWisdom operation
   retry_attempts: 3

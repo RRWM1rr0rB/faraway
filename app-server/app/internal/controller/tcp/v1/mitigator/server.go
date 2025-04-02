@@ -10,6 +10,8 @@ import (
 // policy defines the interface for getting wisdom.
 type policy interface {
 	GetWisdom(ctx context.Context) (mitigator.WisdomDTO, error)
+	GeneratePoWChallenge(difficulty int32) (*mitigator.PoWChallenge, error)
+	ValidatePoWSolution(challenge *mitigator.PoWChallenge, solution *mitigator.PoWSolution) bool
 }
 
 // Controller processes incoming TCP connections for the mitigator service.

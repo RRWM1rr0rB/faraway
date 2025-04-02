@@ -1,6 +1,7 @@
 package mitigator
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"encoding/json"
@@ -42,7 +43,7 @@ func (c *Controller) GetQuote(ctx context.Context, cfg *config.TCPClientConfig) 
 
 	// 2. Wait for PoW Challenge
 	logging.L(ctx).Debug("Waiting for PoW challenge...")
-	challenge, challengeErr := c.waitPoWChallenge(ctx, client, cfg)
+	challenge, challengeErr := c.waitPoWChallenge(ctx, client)
 	if challengeErr != nil {
 		return "", errors.Wrap(challengeErr, "failed to wait for PoW challenge")
 	}
@@ -71,33 +72,73 @@ func (c *Controller) GetQuote(ctx context.Context, cfg *config.TCPClientConfig) 
 
 // waitPoWChallenge waits for a PoW challenge from the server and returns the parsed
 // challenge. It returns an error if the challenge cannot be read within the timeout.
-func (c *Controller) waitPoWChallenge(ctx context.Context, client *tcp.Client, cfg *config.TCPClientConfig) (*mitigator.PoWChallenge, error) {
-	ctx, cancel := context.WithTimeout(ctx, cfg.ReadTimeout)
-	defer cancel()
+func (c *Controller) waitPoWChallenge(ctx context.Context, client *tcp.Client) (*mitigator.PoWChallenge, error) {
+	const challengeSize = 44 // 8 (timestamp) + 32 (random) + 4 (difficulty)
 
-	// Read 47 bytes (8 timestamp + 32 random + 4 difficulty)
-	buf := make([]byte, 44)
-	_, err := client.ReadWithRetry(3, 500*time.Millisecond)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to read PoW challenge")
-	}
-	conn := client.RemoteAddr()
-	_, err = io.ReadFull(conn.(io.Reader), buf)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to read exact PoW challenge bytes")
+	// Буфер для накопления прочитанных данных
+	challengeBuf := bytes.NewBuffer(make([]byte, 0, challengeSize))
+	bytesRead := 0
+
+	// Установим общий таймаут на чтение задачи, если нужно
+	// Например, 5 секунд. Используйте c.readTimeout из клиента или другое значение.
+	readDeadline := time.Now().Add(5 * time.Second) // Пример
+
+	for bytesRead < challengeSize {
+		// Проверяем дедлайн и контекст перед каждым чтением
+		if time.Now().After(readDeadline) {
+			return nil, errors.New("timeout waiting for PoW challenge")
+		}
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("context cancelled while waiting for PoW challenge: %w", ctx.Err())
+		default:
+		}
+
+		// Читаем следующую порцию данных с помощью метода клиента
+		// Метод Read() клиента уже должен обрабатывать свои внутренние таймауты и ошибки
+		data, err := client.Read() // Read() возвращает прочитанные байты
+		if err != nil {
+			// Обрабатываем ошибки, возвращаемые client.Read()
+			if errors.Is(err, tcp.ErrTimeout) { // Используйте константы ошибок из вашего tcp пакета
+				logging.L(ctx).Warn("Read timeout occurred while waiting for challenge, retrying if within deadline...")
+				// Не возвращаем ошибку сразу, цикл проверит общий дедлайн
+				time.Sleep(100 * time.Millisecond) // Небольшая пауза перед повторной попыткой
+				continue
+			}
+			if errors.Is(err, tcp.ErrConnectionClosed) || errors.Is(err, io.EOF) {
+				return nil, errors.New("connection closed while waiting for PoW challenge")
+			}
+			// Оборачиваем и возвращаем другие неожиданные ошибки
+			return nil, errors.Wrap(err, "failed to read PoW challenge data")
+		}
+
+		// Добавляем прочитанные данные в буфер
+		challengeBuf.Write(data)
+		bytesRead = challengeBuf.Len() // Обновляем количество прочитанных байт
+		logging.L(ctx).Debug("Read %d bytes for challenge, total %d/%d", len(data), bytesRead, challengeSize)
 	}
 
-	// Parsing data.
-	timestamp := int64(binary.BigEndian.Uint64(buf[0:8]))
-	randomBytes := buf[8:40]
-	difficulty := int32(binary.BigEndian.Uint32(buf[40:44]))
+	// Если вышли из цикла, но прочитали больше, чем нужно (маловероятно с Read)
+	if bytesRead > challengeSize {
+		// Это странная ситуация, возможно, ошибка в логике сервера или клиента
+		return nil, fmt.Errorf("read more bytes (%d) than expected (%d) for PoW challenge", bytesRead, challengeSize)
+	}
+
+	// Теперь у нас есть ровно 44 байта в challengeBuf
+	finalBuffer := challengeBuf.Bytes()
+
+	// Parsing data
+	timestamp := int64(binary.BigEndian.Uint64(finalBuffer[0:8]))
+	randomBytes := finalBuffer[8:40]
+	difficulty := int32(binary.BigEndian.Uint32(finalBuffer[40:44]))
 
 	challenge := &mitigator.PoWChallenge{
 		Timestamp:   timestamp,
 		RandomBytes: randomBytes,
 		Difficulty:  difficulty,
 	}
-	logging.L(ctx).Info("PoW challenge received", logging.IntAttr("difficulty", int(challenge.Difficulty)))
+	logging.L(ctx).Info("Received PoW challenge: Difficulty=%d", challenge.Difficulty)
+
 	return challenge, nil
 }
 
