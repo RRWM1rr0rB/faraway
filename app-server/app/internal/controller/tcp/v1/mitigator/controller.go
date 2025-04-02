@@ -7,7 +7,8 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"net"
+
+	"app-server/app/internal/config"
 )
 
 const (
@@ -17,7 +18,7 @@ const (
 
 // HandleConnection implements the tcp.HandlerFunc interface.
 // It reads requests, gets wisdom, and sends responses.
-func (h *Controller) HandleConnection(ctx context.Context, conn net.Conn) error {
+func (h *Controller) HandleConnection(ctx context.Context, cfg *config.TCPConfig) error {
 	clientAddr := conn.RemoteAddr().String()
 	h.log.InfoContext(ctx, "Handling new connection", slog.String("client_addr", clientAddr))
 

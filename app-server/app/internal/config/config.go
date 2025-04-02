@@ -1,54 +1,58 @@
 package config
 
 import (
-	"errors"
 	"fmt"
-	"strings"
+	"os"
 	"time"
 
+	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/errors"
 	"github.com/spf13/viper"
 )
 
-// Config remains the same structure
-type Config struct {
-	Env             string        `mapstructure:"env"`
-	AppName         string        `mapstructure:"app_name"`
-	ShutdownTimeout time.Duration `mapstructure:"shutdown_timeout"`
-	Logger          LoggerConfig  `mapstructure:"logger"`
-	TCP             TCPConfig     `mapstructure:"tcp"`
-}
+type (
+	// AppConfig remains the same structure
+	AppConfig struct {
+		Env             string         `mapstructure:"env"`
+		AppName         string         `mapstructure:"app_name"`
+		ShutdownTimeout time.Duration  `mapstructure:"shutdown_timeout"`
+		LogLevel        string         `mapstructure:"log_level"`
+		Profiler        ProfilerConfig `mapstructure:"profiler"`
+		TCP             TCPConfig      `mapstructure:"tcp"`
+	}
 
-type LoggerConfig struct {
-	Level string `mapstructure:"level"`
-}
+	ProfilerConfig struct {
+		IsEnabled         bool          `mapstructure:"enabled"`
+		Host              string        `mapstructure:"host"`
+		Port              int           `mapstructure:"port"`
+		ReadHeaderTimeout time.Duration `mapstructure:"read_header_timeout"`
+	}
 
-type ProfilerConfig struct {
-	IsEnabled         bool          `mapstructure:"enabled"`
-	Host              string        `mapstructure:"host"`
-	Port              int           `mapstructure:"port"`
-	ReadHeaderTimeout time.Duration `mapstructure:"read_header_timeout"`
-}
+	TCPConfig struct {
+		Addr           string        `mapstructure:"addr"`
+		PowDifficulty  int           `mapstructure:"pow_difficulty"`
+		EnableTLS      bool          `mapstructure:"enable_tls"`
+		CertFile       string        `mapstructure:"cert_file"`
+		KeyFile        string        `mapstructure:"key_file"`
+		ReadTimeout    time.Duration `mapstructure:"read_timeout"`
+		WriteTimeout   time.Duration `mapstructure:"write_timeout"`
+		HandlerTimeout time.Duration `mapstructure:"handler_timeout"`
+	}
+)
 
-type TCPConfig struct {
-	Addr           string        `mapstructure:"addr"`
-	PowDifficulty  int           `mapstructure:"pow_difficulty"`
-	EnableTLS      bool          `mapstructure:"enable_tls"`
-	CertFile       string        `mapstructure:"cert_file"`
-	KeyFile        string        `mapstructure:"key_file"`
-	ReadTimeout    time.Duration `mapstructure:"read_timeout"`
-	WriteTimeout   time.Duration `mapstructure:"write_timeout"`
-	HandlerTimeout time.Duration `mapstructure:"handler_timeout"`
-}
-
-// LoadConfig loads configuration using Viper.
-func LoadConfig(configPath string) (*Config, error) {
+// Load loads configuration using Viper.
+func Load() (*AppConfig, error) {
 	v := viper.New()
+	var cfg AppConfig
 
 	// --- Set Default Values ---
 	v.SetDefault("env", "local")
 	v.SetDefault("app_name", "faraway-server")
 	v.SetDefault("shutdown_timeout", 5*time.Second)
-	v.SetDefault("logger.level", "info")
+	v.SetDefault("log_level", "info")
+	v.SetDefault("profiler.enabled", true)
+	v.SetDefault("profiler.host", "localhost")
+	v.SetDefault("profiler.port", 6060)
+	v.SetDefault("profiler.read_header_timeout", 5*time.Second)
 	v.SetDefault("tcp.addr", ":8081") // Default listen address
 	v.SetDefault("tcp.pow_difficulty", 20)
 	v.SetDefault("tcp.enable_tls", false)
@@ -58,41 +62,36 @@ func LoadConfig(configPath string) (*Config, error) {
 	v.SetDefault("tcp.write_timeout", 10*time.Second)
 	v.SetDefault("tcp.handler_timeout", 20*time.Second)
 
-	// --- Configure Viper ---
-	// Read config file if provided
-	if configPath != "" {
-		v.SetConfigFile(configPath)
-		// Attempt to read the config file
-		if err := v.ReadInConfig(); err != nil {
-			// Handle specific error type: ConfigFileNotFoundError
-			var configFileNotFoundError viper.ConfigFileNotFoundError
-			if !errors.As(err, &configFileNotFoundError) {
-				// It's an error other than file not found
-				return nil, fmt.Errorf("failed to read config file %s: %w", configPath, err)
-			}
-			// Config file not found; proceed with defaults/env vars
-			fmt.Printf("Config file not found at %s, using defaults and environment variables\n", configPath)
-		}
+	// --- Configuration file setup ---
+	configPath := os.Getenv(envConfigPath)
+	if configPath == "" {
+		configPath = defaultConfigPath
+		fmt.Printf("Environment variable %s not set, using default config path: %s\n", envConfigPath, configPath)
 	} else {
-		// Optional: Search for config file in standard paths if no specific path is given
-		// v.SetConfigName("config.server") // Name of config file (without extension)
-		// v.AddConfigPath("./configs") // Path to look for the config file in
-		// v.AddConfigPath(".")         // Current directory
-		// if err := v.ReadInConfig(); err != nil { ... } // Handle error
-		fmt.Println("No config file path provided, using defaults and environment variables")
+		fmt.Printf("Using config path from environment variable %s: %s\n", envConfigPath, configPath)
 	}
 
-	// Enable reading from environment variables
-	v.AutomaticEnv()
-	// Optional: Set a prefix for environment variables (e.g., FARAWAY_SERVER_LOGGER_LEVEL)
-	// v.SetEnvPrefix("FARAWAY_SERVER")
-	// Replace dots in keys with underscores for env var names (e.g., logger.level -> LOGGER_LEVEL)
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.SetConfigFile(configPath)
+	v.SetConfigType("yaml") // Or "json", "toml", etc.
 
-	// --- Unmarshal into Struct ---
-	var cfg Config
+	// Attempt to read the config file
+	if err := v.ReadInConfig(); err != nil {
+		// It's okay if the config file doesn't exist if using defaults or env vars
+		var configFileNotFoundError viper.ConfigFileNotFoundError
+		if !errors.As(err, &configFileNotFoundError) {
+			return nil, errors.Wrap(err, "failed to read config file")
+		}
+		fmt.Printf("Config file %s not found, using defaults and environment variables.\n", configPath)
+	} else {
+		fmt.Printf("Loaded configuration from %s\n", configPath)
+	}
+
+	// --- Environment variables setup ---
+	v.AutomaticEnv() // Read environment variables that match keys
+
+	// Unmarshal the config
 	if err := v.Unmarshal(&cfg); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+		return nil, errors.Wrap(err, "failed to unmarshal config")
 	}
 
 	// --- Post-Load Validation ---
