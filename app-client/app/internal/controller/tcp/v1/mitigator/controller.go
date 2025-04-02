@@ -2,8 +2,11 @@ package mitigator
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io"
+	"time"
 
 	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/core/tcp"
 	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/errors"
@@ -69,27 +72,33 @@ func (c *Controller) GetQuote(ctx context.Context, cfg *config.TCPClientConfig) 
 // waitPoWChallenge waits for a PoW challenge from the server and returns the parsed
 // challenge. It returns an error if the challenge cannot be read within the timeout.
 func (c *Controller) waitPoWChallenge(ctx context.Context, client *tcp.Client, cfg *config.TCPClientConfig) (*mitigator.PoWChallenge, error) {
-	// Set deadline for reading the challenge
-	readCtx, cancelReadChallenge := context.WithTimeout(ctx, cfg.ReadTimeout)
-	defer cancelReadChallenge()
-	challengeBytes, err := readFromClient(readCtx, client)
+	ctx, cancel := context.WithTimeout(ctx, cfg.ReadTimeout)
+	defer cancel()
+
+	// Read 47 bytes (8 timestamp + 32 random + 4 difficulty)
+	buf := make([]byte, 44)
+	_, err := client.ReadWithRetry(3, 500*time.Millisecond)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read PoW challenge")
 	}
+	conn := client.RemoteAddr()
+	_, err = io.ReadFull(conn.(io.Reader), buf)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read exact PoW challenge bytes")
+	}
 
-	var challenge mitigator.PoWChallenge
-	if jsonErr := json.Unmarshal(challengeBytes, &challenge); jsonErr != nil {
-		// Log the raw bytes received for debugging
-		logging.L(ctx).Error(
-			"Failed to unmarshal PoW challenge JSON",
-			logging.ErrAttr(jsonErr),
-			logging.StringAttr("raw_data", string(challengeBytes)),
-		)
-		return nil, errors.Wrap(jsonErr, "failed to unmarshal pow challenge")
+	// Parsing data.
+	timestamp := int64(binary.BigEndian.Uint64(buf[0:8]))
+	randomBytes := buf[8:40]
+	difficulty := int32(binary.BigEndian.Uint32(buf[40:44]))
+
+	challenge := &mitigator.PoWChallenge{
+		Timestamp:   timestamp,
+		RandomBytes: randomBytes,
+		Difficulty:  difficulty,
 	}
 	logging.L(ctx).Info("PoW challenge received", logging.IntAttr("difficulty", int(challenge.Difficulty)))
-
-	return &challenge, nil
+	return challenge, nil
 }
 
 // solvePoWChallenge solves the given Proof-of-Work challenge using the policy.
@@ -116,17 +125,14 @@ func (c *Controller) solvePoWChallenge(
 }
 
 func (c *Controller) sendPoWSolution(ctx context.Context, client *tcp.Client, solution *mitigator.PoWSolution) error {
-	solutionBytes, jsonErr := json.Marshal(solution)
-	if jsonErr != nil {
-		return errors.Wrap(jsonErr, "failed to marshal PoW solution")
-	}
+	// Format 8 byte to send.
+	solutionBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(solutionBytes, solution.Nonce)
 
-	logging.L(ctx).Debug("Sending PoW solution...")
-	// Add newline for server-side reading with buffered reader.
-	if writeErr := client.Write(append(solutionBytes, '\n')); writeErr != nil {
-		return errors.Wrap(writeErr, "failed to write PoW solution")
+	logging.L(ctx).Debug("Sending PoW solution", logging.Uint64Attr("nonce", solution.Nonce))
+	if err := client.Write(solutionBytes); err != nil {
+		return errors.Wrap(err, "failed to write PoW solution")
 	}
-
 	return nil
 }
 

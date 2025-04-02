@@ -46,7 +46,8 @@ func NewApp(ctx context.Context) (*App, error) {
 	// 4. Initialize Controller
 	tcpController := mitigator.NewController(
 		powQuote,
-		cfg.TCP.HandlerTimeout)
+		cfg.TCP.HandlerTimeout,
+	)
 	logging.L(ctx).Info("TCP Controller initialized")
 
 	// 5. Initialize Runner
