@@ -3,7 +3,7 @@ module app-client
 go 1.24.1
 
 require (
-	github.com/RRWM1rr0rB/faraway_lib/backend/golang/core v0.0.0-20250401130924-de9c0dc96461
+	github.com/RRWM1rr0rB/faraway_lib/backend/golang/core v0.0.0-20250401211449-2eac6470a8bd
 	github.com/RRWM1rr0rB/faraway_lib/backend/golang/errors v0.0.0-20250401090624-2776c75e74b2
 	github.com/RRWM1rr0rB/faraway_lib/backend/golang/logging v0.0.0-20250401090624-2776c75e74b2
 	github.com/spf13/viper v1.20.1
