@@ -1,5 +1,7 @@
 github.com/RRWM1rr0rB/faraway_lib/backend/golang/core v0.0.0-20250401211449-2eac6470a8bd h1:vInhgYxLCX4IGDmBneA9W282BAWiYHTVTjPXXodVIWQ=
 github.com/RRWM1rr0rB/faraway_lib/backend/golang/core v0.0.0-20250401211449-2eac6470a8bd/go.mod h1:pmMUJtU5r0lo0MgWbPrAq5EvW42P1oenw7Oaq6vxXsk=
+github.com/RRWM1rr0rB/faraway_lib/backend/golang/core v0.0.0-20250402204131-0ceedce1bf39 h1:Ip00+KBH5kgClyFlqtqZqhivhdezySA0OZoYF+NMf7g=
+github.com/RRWM1rr0rB/faraway_lib/backend/golang/core v0.0.0-20250402204131-0ceedce1bf39/go.mod h1:pmMUJtU5r0lo0MgWbPrAq5EvW42P1oenw7Oaq6vxXsk=
 github.com/RRWM1rr0rB/faraway_lib/backend/golang/errors v0.0.0-20250331133137-3eb5b4828a19 h1:QDvgLSUFrrzX3oHXNh723LmMmDLSH7e3Mhi9Kp8nKKY=
 github.com/RRWM1rr0rB/faraway_lib/backend/golang/errors v0.0.0-20250331133137-3eb5b4828a19/go.mod h1:CJ5zmPhGDlBXmUJF8qs+y/pt143eDiyQUzlH1S+76G4=
 github.com/RRWM1rr0rB/faraway_lib/backend/golang/logging v0.0.0-20250331162752-aa4556f7ba53 h1:tV8jauHcMoA+mkALus1HDpEwrylf7PFSr3s/4NzDSd8=

@@ -3,7 +3,7 @@ module app-server
 go 1.24.1
 
 require (
-	github.com/RRWM1rr0rB/faraway_lib/backend/golang/core v0.0.0-20250401211449-2eac6470a8bd
+	github.com/RRWM1rr0rB/faraway_lib/backend/golang/core v0.0.0-20250402204131-0ceedce1bf39
 	github.com/RRWM1rr0rB/faraway_lib/backend/golang/errors v0.0.0-20250331133137-3eb5b4828a19
 	github.com/RRWM1rr0rB/faraway_lib/backend/golang/logging v0.0.0-20250331162752-aa4556f7ba53
 	github.com/RRWM1rr0rB/faraway_lib/backend/golang/pprof v0.0.0-20250331134335-4d3c95e8ff2b

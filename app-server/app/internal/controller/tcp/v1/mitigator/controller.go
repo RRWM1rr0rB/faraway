@@ -155,9 +155,11 @@ func (c *Controller) sendQuote(ctx context.Context, server net.Conn) error {
 		return fmt.Errorf("failed to get quote: %w", err)
 	}
 
-	_ = quote
+	res := tcp.WisdomDTO{
+		Quote: quote.Quote,
+	}
 
-	err = tcp.WritePoWSolution(server, nil)
+	err = tcp.WritePoWSolution(server, &res)
 	if err != nil {
 		return fmt.Errorf("failed to send quote to client: %w", err)
 	}
