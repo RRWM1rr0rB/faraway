@@ -7,8 +7,8 @@ import (
 
 // StaticWisdomProvider provides wisdom from a predefined list.
 type StaticWisdomProvider struct {
-	quotes []string
-	r      *rand.Rand
+	Quotes []string
+	R      *rand.Rand
 }
 
 // New creates a new StaticWisdomProvider.
@@ -31,7 +31,7 @@ func New() *StaticWisdomProvider {
 	randomGenerator := rand.New(source)
 
 	return &StaticWisdomProvider{
-		quotes: quotes,
-		r:      randomGenerator,
+		Quotes: quotes,
+		R:      randomGenerator,
 	}
 }

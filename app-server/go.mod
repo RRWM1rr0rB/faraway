@@ -8,11 +8,13 @@ require (
 	github.com/RRWM1rr0rB/faraway_lib/backend/golang/logging v0.0.0-20250331162752-aa4556f7ba53
 	github.com/RRWM1rr0rB/faraway_lib/backend/golang/pprof v0.0.0-20250331134335-4d3c95e8ff2b
 	github.com/spf13/viper v1.20.1
+	github.com/stretchr/testify v1.10.0
 )
 
 require (
 	github.com/RRWM1rr0rB/faraway_lib/backend/golang/tracing v0.0.0-20250331145437-1c4c07eac7c2 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
@@ -24,6 +26,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sagikazarmark/locafero v0.9.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.14.0 // indirect

@@ -121,7 +121,7 @@ func (c *Controller) HandleConnection(ctx context.Context, cfg *config.TCPConfig
 }
 
 func (c *Controller) sendChallenge(ctx context.Context, server net.Conn) (*mitigator.PoWChallenge, error) {
-	challenge, err := c.policy.GeneratePoWChallenge(30)
+	challenge, err := c.policy.GeneratePoWChallenge(15)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate pow challenge")
 	}

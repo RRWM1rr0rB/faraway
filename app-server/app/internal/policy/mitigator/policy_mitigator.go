@@ -13,14 +13,14 @@ import (
 
 // GetWisdom returns a random piece of wisdom.
 func (p *StaticWisdomProvider) GetWisdom(ctx context.Context) (WisdomDTO, error) {
-	if len(p.quotes) == 0 {
+	if len(p.Quotes) == 0 {
 		logging.L(ctx).Warn("No quotes configured")
 		return WisdomDTO{}, ErrNoWisdomFound
 	}
 
 	// Select a random quote
-	index := p.r.Intn(len(p.quotes))
-	quote := p.quotes[index]
+	index := p.R.Intn(len(p.Quotes))
+	quote := p.Quotes[index]
 
 	logging.L(ctx).Info("Providing wisdom", logging.StringAttr("quote", quote))
 
@@ -65,12 +65,12 @@ func (p *StaticWisdomProvider) ValidatePoWSolution(challenge *PoWChallenge, solu
 
 	hash := sha256.Sum256(buf)
 
-	leadingZeros := countLeadingZeros(hash[:])
+	leadingZeros := CountLeadingZeros(hash[:])
 	return leadingZeros >= challenge.Difficulty
 }
 
-// countLeadingZeros counts the number of leading zeros in a byte slice.
-func countLeadingZeros(data []byte) int32 {
+// CountLeadingZeros counts the number of leading zeros in a byte slice.
+func CountLeadingZeros(data []byte) int32 {
 	var zeros int32
 	for _, b := range data {
 		if b == 0 {
