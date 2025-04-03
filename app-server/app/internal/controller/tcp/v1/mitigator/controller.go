@@ -31,7 +31,7 @@ func (c *Controller) HandleConnection(ctx context.Context, cfg *config.TCPConfig
 
 		// 1. Handling PoW Challenge
 		// Sent 'conn' (type net.Conn), then handler receive how argument.
-		challenge, challengeErr := c.sendChallenge(localCtx, conn)
+		challenge, challengeErr := c.sendChallenge(localCtx, conn, cfg)
 		if challengeErr != nil {
 			logging.L(localCtx).Error("failed to send challenge", "error", challengeErr)
 			return // finalize the processing of this connection.
@@ -120,8 +120,12 @@ func (c *Controller) HandleConnection(ctx context.Context, cfg *config.TCPConfig
 	}
 }
 
-func (c *Controller) sendChallenge(ctx context.Context, server net.Conn) (*mitigator.PoWChallenge, error) {
-	challenge, err := c.policy.GeneratePoWChallenge(15)
+func (c *Controller) sendChallenge(
+	ctx context.Context,
+	server net.Conn,
+	cfg *config.TCPConfig,
+) (*mitigator.PoWChallenge, error) {
+	challenge, err := c.policy.GeneratePoWChallenge(cfg.PowDifficulty)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate pow challenge")
 	}

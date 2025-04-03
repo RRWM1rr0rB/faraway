@@ -7,7 +7,7 @@ logger:
 
 tcp:
   addr: ":8080" # Port for the server to listen on
-  pow_difficulty: 20 # Must match client expectations for PoW
+  pow_difficulty: 15 # Must match client expectations for PoW
   enable_tls: false # Set to true and configure cert/key files if needed
   # cert_file: "path/to/server.crt" # Uncomment and set path if TLS enabled
   # key_file: "path/to/server.key"  # Uncomment and set path if TLS enabled

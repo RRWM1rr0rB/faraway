@@ -29,7 +29,7 @@ type (
 
 	TCPConfig struct {
 		Addr           string        `mapstructure:"addr"`
-		PowDifficulty  int           `mapstructure:"pow_difficulty"`
+		PowDifficulty  int32         `mapstructure:"pow_difficulty"`
 		EnableTLS      bool          `mapstructure:"enable_tls"`
 		CertFile       string        `mapstructure:"cert_file"`
 		KeyFile        string        `mapstructure:"key_file"`
