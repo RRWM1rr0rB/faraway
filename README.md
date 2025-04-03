@@ -48,6 +48,62 @@ When selecting a PoW algorithm, the main consideration is the type of attackers 
 |   Argon2   | 🧠 Memory-bound | ❌ Heavy on phones     |    ✅ Excellent              | ✅ Best protection      |
 |  Hashcash  | 🖥️ CPU-bound | ✅ Yes                    |  ✅ Easy to adjust  | ⚠️ Moderate protection        |
 
+## Feature ...
+
+### 🔥 Enhanced PoW System
+
+#### 1. Sessions for Legitimate Users
+
+• If an IP is not flagged for suspicious activity, then:
+
+• After successfully solving one PoW challenge, they receive 15 minutes of free access.
+
+• This reduces the computational burden on users.
+
+• Sessions are stored in Redis.
+
+#### 2. Dynamic PoW Difficulty
+
+• PoW difficulty adjusts dynamically:
+
+• Under normal traffic, users solve simple challenges (5-10 leading zeros).
+
+• If an IP's activity increases, the difficulty scales up (15-30 leading zeros).
+
+• If the server detects anomalously fast solutions, the IP is banned.
+
+##### 3. Blacklist System
+
+• IPs solving difficult challenges too quickly are added to a blacklist.
+
+• No full blocking: these IPs receive the hardest PoW challenges (30-32 leading zeros), making an attack prohibitively expensive.
+
+#### 4. State Tracking in Redis
+
+• We use Redis to track user activity:
+
+• Key: pow_session:<IP>
+
+• Value: timestamp + last PoW difficulty
+
+• If the session is active, no new PoW is required for 15 minutes.
+
+• ### 🎯 Conclusion
+
+✅ Legitimate users are not affected – 1 PoW every 15 minutes.
+
+✅ Bots must solve PoW constantly, making an attack unprofitable.
+
+✅ The system adapts flexibly to different loads.
+
+• By implementing this system, we achieve a balance between security and usability! 🚀
+
+### 📌 Future Enhancements
+
+• Currently, only a basic PoW system has been implemented. The full adaptive PoW system, as described above, would require approximately one week to develop and integrate.
+
+
+
 ## 📂 Project Structure
 
 ```
@@ -110,121 +166,26 @@ When selecting a PoW algorithm, the main consideration is the type of attackers 
 │   └── Dockerfile.server.dockerfile -- Dockerfile for server.
 ```
 
----
+-----------------------------------------------------------------------------------------
 
-### 📂 Faraway lib Structure.
+## Architecture Choice
 
-```
-        ├── core
-        │   ├── array
-        │   │   └── array.go -- don't use
-        │   ├── blacklist
-        │   │   └── blacklist.go -- logic for blacklist.
-        │   ├── bytes
-        │   │   └── bytes.go -- logic for bytes.
-        │   ├── clock
-        │   │   ├── clock.go -- logic for clock.
-        │   │   └── interface.go -- interface for clock.
-        │   ├── closer
-        │   │   └── closer.go -- logic for closer.
-        │   ├── encryption
-        │   │   └── sha-256 -- logic for encryption.
-        │   │       └── sha_256.go
-        │   ├── go.mod
-        │   ├── go.sum
-        │   ├── pointer -- logic for pointer.
-        │   │   └── pointer.go
-        │   ├── random
-        │   │   └── random.go -- logic for random.
-        │   ├── repeat
-        │   │   ├── repeat.go -- logic for repeat.
-        │   │   ├── repeat_http.go -- logic for repeat.
-        │   │   └── repeat_ws.go -- logic for repeat.
-        │   ├── safe
-        │   │   ├── errorgroup
-        │   │   │   └── errorgroup.go -- logic for errorgroup.
-        │   │   ├── safe.go -- logic for safe.
-        │   │   └── waitgroup
-        │   │       └── waitgroup.go -- logic for waitgroup.
-        │   ├── tcp ------------------- WORK WITH TCP(BLACK LIST, COUNT CONNECTION AND OTHER(CLIENT AND SERVER))
-        │   │   ├── client.go
-        │   │   ├── error.go
-        │   │   ├── middleware.go
-        │   │   ├── options.go
-        │   │   ├── pool.go
-        │   │   ├── pow.go
-        │   │   ├── retry.go
-        │   │   ├── server.go
-        │   │   └── tls.go
-        │   ├── time -- logic for time.
-        │   │   └── time.go
-        │   ├── uuid -- logic for uuid.
-        │   │   ├── db -- logic for db.
-        │   │   │   └── uuid.go
-        │   │   ├── google_uuid -- logic for google_uuid.
-        │   │   │   ├── interface.go
-        │   │   │   ├── ulid.go
-        │   │   │   └── uuid.go
-        │   │   ├── network -- logic for network.
-        │   │   │   └── uuid.go
-        │   │   ├── uuid.go
-        │   │   └── uuid_test.go
-        │   └── version
-        ├── errors -- Custom errors.
-        │   ├── errors.go
-        │   ├── go.mod
-        │   ├── go.sum
-        │   └── version
-        ├── logging -- Logging on slog with Ctx and other functional.
-        │   ├── alias.go
-        │   ├── context.go
-        │   ├── go.mod
-        │   ├── go.sum
-        │   ├── logger.go
-        │   ├── logger_test.go
-        │   ├── middleware.go
-        │   └── version
-        ├── main.go
-        ├── metrics -- Metrics on prometheus with Ctx and other functional.
-        │   ├── config.go
-        │   ├── go.mod
-        │   ├── go.sum
-        │   ├── grpc_middleware.go
-        │   ├── handler.go
-        │   ├── http_middleware.go
-        │   ├── metrics.go
-        │   ├── metrics_grpc_availability.go
-        │   ├── metrics_test.go
-        │   └── version
-        ├── pprof -- Profiling on pprof with Ctx and other functional.
-        │   ├── config.go
-        │   ├── go.mod
-        │   ├── server.go
-        │   ├── server_test.go
-        │   └── version
-        ├── redis -- Redis on redis with Ctx and other functional.
-        │   ├── aliases.go
-        │   ├── error.go
-        │   ├── go.mod
-        │   ├── go.sum
-        │   ├── metrics.go
-        │   ├── redis.go
-        │   └── version
-        └── tracing -- Tracing on jaeger with Ctx and other functional.
-            ├── attrs.go
-            ├── go.mod
-            ├── go.sum
-            ├── middleware.go
-            ├── tracing.go
-            ├── tracing_config.go
-            └── version
-```
+- **Client-Server**: A client-server architecture that separates logic between client and server code.
 
-## Выбор архитектуры.
+- **Layers**: Layers such as controller and policy interact through interfaces and structures. As the logic scales, this allows for efficient functional expansion. Additionally, a domain folder can be introduced for core logic, with a service handling interactions and database selection, while storage is responsible for implementing database interaction methods.
 
-- **Client-Server**: Клиент-серверная архитектура, которая позволяет разделить логику на клиентский и серверный код.
+goos: darwin
+goarch: arm64
+pkg: app-client/app/internal/policy/mitigator
+cpu: Apple M2
 
-- **Слои**: такие слои как controller и policy, которые взаимодействуют между собой через интерфейсы и структуры при мастабировании логики они позволят эффективно расширять функционал, так же можно дабвить папку domain  для логики service(сервис отвечает за взаимодействия и выбором БД, а так же собсвенно storage  который отвечает за реализацию методов взаимодействия с БД).
-
+|           description           | iterations | nanoseconds per operaion | 
+|:-------------------------------:|:-----------|:-------------------------|  
+| BenchmarkSolveChallenge_5zeros  | 677421     | 2262 ns/op               | 
+| BenchmarkSolveChallenge_10zeros | 155305     | 11870 ns/op              | 
+| BenchmarkSolveChallenge_15zeros | 967        | 9537857 ns/op            | 
+| BenchmarkSolveChallenge_20zeros | 25         | 60938853 ns/op           | 
+| BenchmarkSolveChallenge_25zeros | 1          | 10221830500 ns/op        | 
+| BenchmarkSolveChallenge_30zeros | 1          | 23460264833 ns/op        |
 
 This README now includes a more structured description, project features, and an improved file tree display in markdown format. If you need further refinements or explanations, let me know! 🚀

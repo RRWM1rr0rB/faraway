@@ -11,74 +11,65 @@ import (
 	"time"
 )
 
-// benchmarkSolveChallenge теперь будет хешировать случайные байты при создании задачи.
-func BenchmarkSolveChallenge_5zeros_5symbols(b *testing.B) {
-	benchmarkSolveChallenge(b, 5, 5)
+func BenchmarkSolveChallenge_5zeros(b *testing.B) {
+	benchmarkSolveChallenge(b, 5)
 }
 
-func BenchmarkSolveChallenge_5zeros_20symbols(b *testing.B) {
-	benchmarkSolveChallenge(b, 5, 20)
+func BenchmarkSolveChallenge_10zeros(b *testing.B) {
+	benchmarkSolveChallenge(b, 10)
 }
 
-func BenchmarkSolveChallenge_10zeros_5symbols(b *testing.B) {
-	benchmarkSolveChallenge(b, 10, 5)
+func BenchmarkSolveChallenge_15zeros(b *testing.B) {
+	benchmarkSolveChallenge(b, 15)
 }
 
-func BenchmarkSolveChallenge_10zeros_20symbols(b *testing.B) {
-	benchmarkSolveChallenge(b, 10, 20)
+func BenchmarkSolveChallenge_20zeros(b *testing.B) {
+	benchmarkSolveChallenge(b, 20)
 }
 
-func BenchmarkSolveChallenge_15zeros_5symbols(b *testing.B) {
-	benchmarkSolveChallenge(b, 15, 5)
+func BenchmarkSolveChallenge_25zeros(b *testing.B) {
+	benchmarkSolveChallenge(b, 25)
 }
 
-func BenchmarkSolveChallenge_15zeros_20symbols(b *testing.B) {
-	benchmarkSolveChallenge(b, 15, 20)
+func BenchmarkSolveChallenge_30zeros(b *testing.B) {
+	benchmarkSolveChallenge(b, 30)
 }
 
-func BenchmarkSolveChallenge_20zeros_5symbols(b *testing.B) {
-	benchmarkSolveChallenge(b, 20, 5)
-}
-
-func BenchmarkSolveChallenge_20zeros_20symbols(b *testing.B) {
-	benchmarkSolveChallenge(b, 20, 20)
-}
-
-// benchmarkSolveChallenge теперь генерирует challenge с хешированием
-func benchmarkSolveChallenge(b *testing.B, difficulty int32, numSymbols int) {
-	// Генерируем случайные байты для challenge
-	randomBytes := make([]byte, numSymbols)
+func benchmarkSolveChallenge(b *testing.B, difficulty int32) {
+	// Генерируем 32 байта случайных данных.
+	randomBytes := make([]byte, 32)
 	_, err := rand.Read(randomBytes)
 	if err != nil {
 		b.Fatalf("Failed to generate random bytes: %v", err)
 	}
 
-	// Хешируем случайные байты вместе с временной меткой
-	buf := make([]byte, 8+len(randomBytes)) // Временная метка + случайные байты
+	// Формируем буфер из 8 байт метки времени + 32 байта случайных данных.
+	buf := make([]byte, 8+len(randomBytes))
 	binary.BigEndian.PutUint64(buf[0:8], uint64(time.Now().Unix()))
 	copy(buf[8:], randomBytes)
 
-	hash := sha256.Sum256(buf) // Хешируем
+	// Вычисляем хэш от сформированного буфера.
+	hash := sha256.Sum256(buf)
 
-	// Логирование отключается для бенчмарков
+	// Отключаем вывод логов в бенчмарке.
 	log.SetOutput(io.Discard)
 
-	// Создаем challenge с хешированными байтами
+	// Создаём решатель с большим временем ожидания.
 	solver := NewPoWSolver(time.Hour)
 	challenge := PoWChallenge{
 		Timestamp:   time.Now().Unix(),
-		RandomBytes: hash[:], // Используем хешированные байты
+		RandomBytes: hash[:],
 		Difficulty:  difficulty,
 	}
 
-	// Контекст для бенчмарка
 	ctx := context.Background()
 
-	// Выполнение бенчмарка N раз
+	// Сбросим таймер бенчмарка после подготовки.
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := solver.SolvePoWChallenge(ctx, challenge)
-		if err != nil {
-			b.Fatalf("Error solving PoW challenge: %v", err)
+		_, solverErr := solver.SolvePoWChallenge(ctx, challenge)
+		if solverErr != nil {
+			b.Fatalf("Error solving PoW challenge: %v", solverErr)
 		}
 	}
 }

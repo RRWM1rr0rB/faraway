@@ -2,6 +2,7 @@ package mitigator
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -120,7 +121,7 @@ func (c *Controller) HandleConnection(ctx context.Context, cfg *config.TCPConfig
 }
 
 func (c *Controller) sendChallenge(ctx context.Context, server net.Conn) (*mitigator.PoWChallenge, error) {
-	challenge, err := c.policy.GeneratePoWChallenge(5)
+	challenge, err := c.policy.GeneratePoWChallenge(30)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate pow challenge")
 	}
@@ -155,14 +156,28 @@ func (c *Controller) sendQuote(ctx context.Context, server net.Conn) error {
 		return fmt.Errorf("failed to get quote: %w", err)
 	}
 
-	res := tcp.WisdomDTO{
+	res := mitigator.WisdomDTO{
 		Quote: quote.Quote,
 	}
 
-	err = tcp.WritePoWSolution(server, &res)
+	err = WriteQuoteResponse(server, &res)
 	if err != nil {
 		return fmt.Errorf("failed to send quote to client: %w", err)
 	}
 
+	return nil
+}
+
+func WriteQuoteResponse(w io.Writer, solution *mitigator.WisdomDTO) error {
+	data, err := json.Marshal(solution)
+	if err != nil {
+		return fmt.Errorf("failed to marshal solution: %w", err)
+	}
+
+	data = append(data, '\n')
+	_, err = w.Write(data)
+	if err != nil {
+		return fmt.Errorf("failed to write solution data: %w", err)
+	}
 	return nil
 }
