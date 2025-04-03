@@ -7,6 +7,7 @@ require (
 	github.com/RRWM1rr0rB/faraway_lib/backend/golang/errors v0.0.0-20250331133137-3eb5b4828a19
 	github.com/RRWM1rr0rB/faraway_lib/backend/golang/logging v0.0.0-20250331162752-aa4556f7ba53
 	github.com/RRWM1rr0rB/faraway_lib/backend/golang/pprof v0.0.0-20250331134335-4d3c95e8ff2b
+	github.com/joho/godotenv v1.5.1
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
 )

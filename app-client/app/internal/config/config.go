@@ -1,11 +1,13 @@
 package config
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"time"
 
 	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/errors"
+	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
 
@@ -31,44 +33,53 @@ type (
 
 // Load configuration from file and environment variables.
 func Load() (*AppConfig, error) {
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Println("Error loading .env file")
+	}
+
 	vip := viper.New()
 	var cfg AppConfig
 
-	// Set default values
 	vip.SetDefault("app_name", "faraway-client")
 	vip.SetDefault("log_level", "info")
-	vip.SetDefault("tcp_client.url", "localhost:8081")
+	vip.SetDefault("tcp_client.url", "faraway-server:8080")
 	vip.SetDefault("tcp_client.read_timeout", "15s")
 	vip.SetDefault("tcp_client.solution_timeout", "60s")
 
-	// --- Configuration file setup ---
-	configPath := os.Getenv(envConfigPath)
-	if configPath == "" {
-		configPath = defaultConfigPath
-		fmt.Printf("Environment variable %s not set, using default config path: %s\n", envConfigPath, configPath)
-	} else {
-		fmt.Printf("Using config path from environment variable %s: %s\n", envConfigPath, configPath)
-	}
+	var configFlagPath = flag.String("config", "", "Path to the configuration file")
+	flag.Parse()
 
-	vip.SetConfigFile(configPath)
-	vip.SetConfigType("yaml") // Or "json", "toml", etc.
-
-	// Attempt to read the config file
-	if err := vip.ReadInConfig(); err != nil {
-		// It's okay if the config file doesn't exist if using defaults or env vars
-		var configFileNotFoundError viper.ConfigFileNotFoundError
-		if !errors.As(err, &configFileNotFoundError) {
-			return nil, errors.Wrap(err, "failed to read config file")
+	configPath := *configFlagPath
+	if configPath != "" {
+		vip.SetConfigFile(configPath)
+		vip.SetConfigType("yaml")
+		if err := vip.ReadInConfig(); err != nil {
+			var configFileNotFoundError viper.ConfigFileNotFoundError
+			if !errors.As(err, &configFileNotFoundError) {
+				return nil, errors.Wrap(err, "failed to read config file")
+			}
+			fmt.Printf("Config file %s not found, using defaults and environment variables.\n", configPath)
+		} else {
+			fmt.Printf("Loaded configuration from %s\n", configPath)
 		}
-		fmt.Printf("Config file %s not found, using defaults and environment variables.\n", configPath)
 	} else {
-		fmt.Printf("Loaded configuration from %s\n", configPath)
+		viper.AutomaticEnv() // Чтение переменных окружения
+		configPath := os.Getenv(envConfigPath)
+		if configPath != "" {
+			fmt.Printf("Using config path from environment variable %s: %s\n", envConfigPath, configPath)
+			vip.SetConfigFile(configPath)
+			vip.SetConfigType("yaml")
+			if err := vip.ReadInConfig(); err != nil {
+				fmt.Printf("Failed to read config file from env path: %v\n", err)
+			} else {
+				fmt.Printf("Loaded configuration from %s\n", configPath)
+			}
+		} else {
+			fmt.Printf("Environment variable %s not set, using defaults and environment variables.\n", envConfigPath)
+		}
 	}
 
-	// --- Environment variables setup ---
-	vip.AutomaticEnv() // Read environment variables that match keys
-
-	// Unmarshal the config
 	if err := vip.Unmarshal(&cfg); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal config")
 	}

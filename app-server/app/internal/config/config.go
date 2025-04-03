@@ -1,11 +1,13 @@
 package config
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"time"
 
 	"github.com/RRWM1rr0rB/faraway_lib/backend/golang/errors"
+	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
 
@@ -41,6 +43,11 @@ type (
 
 // Load loads configuration using Viper.
 func Load() (*AppConfig, error) {
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Println("Error loading .env file")
+	}
+
 	v := viper.New()
 	var cfg AppConfig
 
@@ -53,8 +60,8 @@ func Load() (*AppConfig, error) {
 	v.SetDefault("profiler.host", "localhost")
 	v.SetDefault("profiler.port", 6060)
 	v.SetDefault("profiler.read_header_timeout", 5*time.Second)
-	v.SetDefault("tcp.addr", ":8081") // Default listen address
-	v.SetDefault("tcp.pow_difficulty", 20)
+	v.SetDefault("tcp.addr", ":8080") // Default listen address
+	v.SetDefault("tcp.pow_difficulty", 15)
 	v.SetDefault("tcp.enable_tls", false)
 	v.SetDefault("tcp.cert_file", "")
 	v.SetDefault("tcp.key_file", "")
@@ -63,12 +70,20 @@ func Load() (*AppConfig, error) {
 	v.SetDefault("tcp.handler_timeout", 20*time.Second)
 
 	// --- Configuration file setup ---
-	configPath := os.Getenv(envConfigPath)
+	var configFlagPath = flag.String("config", "", "Path to the configuration file")
+	flag.Parse()
+
+	configPath := *configFlagPath
 	if configPath == "" {
-		configPath = defaultConfigPath
-		fmt.Printf("Environment variable %s not set, using default config path: %s\n", envConfigPath, configPath)
+		configPath = os.Getenv(envConfigPath)
+		if configPath == "" {
+			configPath = defaultConfigPath
+			fmt.Printf("Environment variable %s not set, using default config path: %s\n", envConfigPath, configPath)
+		} else {
+			fmt.Printf("Using config path from environment variable %s: %s\n", envConfigPath, configPath)
+		}
 	} else {
-		fmt.Printf("Using config path from environment variable %s: %s\n", envConfigPath, configPath)
+		fmt.Printf("Using config path from flag: %s\n", configPath)
 	}
 
 	v.SetConfigFile(configPath)

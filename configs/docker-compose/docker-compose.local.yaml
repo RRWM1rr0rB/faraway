@@ -3,38 +3,32 @@ version: '3.8'
 services:
   server:
     build:
-      context: .
-      dockerfile: Dockerfile.server
-    image: faraway-server:latest
+      context: ../..
+      dockerfile: configs/docker-compose/Dockerfile.server.dockerfile
+    image: server-image:latest
     container_name: faraway-server
     ports:
-      - "8081:8081" # Map host port 8081 to container port 8081
+      - "8080:8080"
     volumes:
-      # Mount local config for easy changes, or rely on the one copied in Dockerfile
-      - ./configs/config.server.local.yaml:/app/configs/config.server.local.yaml:ro
+      - ../../configs/config.server.local.yaml:/app/configs/config.server.local.yaml:ro
     networks:
       - faraway-net
     restart: unless-stopped
 
   client:
     build:
-      context: .
-      dockerfile: Dockerfile.client
-    image: faraway-client:latest
+      context: ../..
+      dockerfile: configs/docker-compose/Dockerfile.client.dockerfile
+    image: client-image:latest
     container_name: faraway-client
     volumes:
-      # Mount a potentially different config for docker-compose, or modify the existing one
-      # For now, using the same one, but server_addr MUST be 'server:8081' inside this config
-      - ./configs/config.client.docker.yaml:/app/configs/config.client.local.yaml:ro # Note the mount target path
-      # Alternatively, override command to use a different config file path if needed
+      - ../../configs/config.client.local.yaml:/app/configs/config.client.local.yaml:ro
     networks:
       - faraway-net
     depends_on:
-      - server # Waits for server container to start, but not necessarily be ready
+      - server
     restart: on-failure
-    # Add entrypoint/command overrides if needed for healthchecks or delays
 
 networks:
   faraway-net:
     driver: bridge
-    name: faraway-net # Use the network created by make docker-network

@@ -25,7 +25,7 @@ func (c *Controller) GetQuote(ctx context.Context, cfg *config.TCPClientConfig) 
 	// 1. Connect to Server
 	// Assuming NewClient handles basic connection setup.
 	// Add TLS config here if needed based on cfg.TLSEnabled etc.
-	client, err := tcp.NewClient("127.0.0.1:8080", nil /* tls config */)
+	client, err := tcp.NewClient("faraway-server:8080", nil /* tls config */)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to create tcp client")
 	}

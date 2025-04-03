@@ -166,10 +166,12 @@ When selecting a PoW algorithm, the main consideration is the type of attackers 
 ├── configs
 │   ├── config.client.local.yaml -- config for client.
 │   ├── config.server.local.yaml -- config for server.
+|   |
+|   |__docker-compose
+|                   |── Dockerfile.client.dockerfile -- Dockerfile for client.
+│                   |── Dockerfile.server.dockerfile -- Dockerfile for server.
+|                   |--docker-compose.local.yaml
 |
-├── deploy
-│   ├── Dockerfile.client.dockerfile -- Dockerfile for client.
-│   └── Dockerfile.server.dockerfile -- Dockerfile for server.
 ```
 
 -----------------------------------------------------------------------------------------

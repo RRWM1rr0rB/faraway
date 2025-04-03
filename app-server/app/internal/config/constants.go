@@ -1,6 +1,6 @@
 package config
 
 const (
-	defaultConfigPath = "/Users/stepen/Desktop/faraway/configs/config.server.local.yaml"
 	envConfigPath     = "CONFIG_PATH"
+	defaultConfigPath = "/app/configs/config.server.local.yaml" // Добавлен путь по умолчанию для сервера
 )
