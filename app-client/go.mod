@@ -6,6 +6,7 @@ require (
 	github.com/RRWM1rr0rB/faraway_lib/backend/golang/core v0.0.0-20250402203159-250567c1b1d9
 	github.com/RRWM1rr0rB/faraway_lib/backend/golang/errors v0.0.0-20250402201607-4ccb8f7ff963
 	github.com/RRWM1rr0rB/faraway_lib/backend/golang/logging v0.0.0-20250402201607-4ccb8f7ff963
+	github.com/joho/godotenv v1.5.1
 	github.com/spf13/viper v1.20.1
 )
 
@@ -22,7 +23,6 @@ require (
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
-	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/sagikazarmark/locafero v0.7.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
