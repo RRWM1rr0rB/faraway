@@ -48,7 +48,7 @@ func (c *Controller) HandleConnection(ctx context.Context, cfg *config.TCPConfig
 			} else {
 				logging.L(localCtx).Error("failed to receive solution", "error", solutionErr)
 			}
-			return // Завершаем обработку
+			return
 		}
 		logging.L(localCtx).Info("Solution received", "nonce", solution)
 

@@ -106,6 +106,12 @@ When selecting a PoW algorithm, the main consideration is the type of attackers 
 
 ## 📂 Project Structure
 
+### All the code is stored in two repositories:
+
+• The first repository contains the client and server.
+• The second repository holds all the libraries.
+• The main library is located at: github.com/RRWM1rr0rB/faraway_lib/backend/golang/core/tcp.
+
 ```
 ├── app-client
 │   ├── app
