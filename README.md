@@ -48,6 +48,19 @@ When selecting a PoW algorithm, the main consideration is the type of attackers 
 |   Argon2   | 🧠 Memory-bound | ❌ Heavy on phones     |    ✅ Excellent              | ✅ Best protection      |
 |  Hashcash  | 🖥️ CPU-bound | ✅ Yes                    |  ✅ Easy to adjust  | ⚠️ Moderate protection        |
 
+
+## Commands
+
+### up
+ ```bash
+$ make up
+ ```
+
+### down
+ ```bash
+$ make down
+ ```
+
 ## Feature ...
 
 ### 🔥 Enhanced PoW System

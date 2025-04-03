@@ -28,11 +28,3 @@ up:
 down:
 	docker-compose -f configs/docker-compose/docker-compose.local.yaml down -v
 
-linter:
-	docker run -t --rm -v $(shell pwd):/app -w /app golangci/golangci-lint:v1.53.3 golangci-lint run -v
-
-tests:
-	go test ./internal/...
-
-benchmark:
-	go test -bench=. ./app/internal/policy/mitigator/... -run=^#
